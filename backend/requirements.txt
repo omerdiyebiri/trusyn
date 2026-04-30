@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy[asyncio]
+asyncpg
+pydantic[email]
+python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
+celery
+redis
+httpx
+beautifulsoup4
+playwright
+python-whois
+aiosmtplib
