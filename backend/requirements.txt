@@ -5,6 +5,7 @@ asyncpg
 pydantic[email]
 pydantic-settings
 python-dotenv
+python-multipart
 python-jose[cryptography]
 passlib[bcrypt]
 celery
