@@ -1,0 +1,14 @@
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.159:3000
+- Environments: .env.local
+✓ Ready in 182ms
+
+ GET / 200 in 148ms (next.js: 92ms, application-code: 56ms)
+[browser] Image with src "http://localhost:3000/vercel.svg" has either width or height modified, but not the other. If you use CSS to change the size of your image, also include the styles 'width: "auto"' or 'height: "auto"' to maintain the aspect ratio.
+ GET / 200 in 38ms (next.js: 3ms, application-code: 34ms)
+ GET /login 200 in 67ms (next.js: 23ms, application-code: 44ms)
+ GET /karavan 404 in 43ms (next.js: 18ms, application-code: 25ms)
+ GET /dashboard 200 in 187ms (next.js: 178ms, application-code: 9ms)
+ GET /dashboard/brands 404 in 27ms (next.js: 7ms, application-code: 20ms)
+ GET /dashboard/brands 404 in 27ms (next.js: 3ms, application-code: 24ms)

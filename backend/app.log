@@ -1,0 +1,164 @@
+aiosqlite - DEBUG - executing <function connect.<locals>.connector at 0x108e19790>
+aiosqlite - DEBUG - operation <function connect.<locals>.connector at 0x108e19790> completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method create_function of sqlite3.Connection object at 0x10645db70>, 'regexp', 2, <function SQLiteDialect_pysqlite.on_connect.<locals>.regexp at 0x108521d30>, deterministic=True)
+aiosqlite - DEBUG - operation functools.partial(<built-in method create_function of sqlite3.Connection object at 0x10645db70>, 'regexp', 2, <function SQLiteDialect_pysqlite.on_connect.<locals>.regexp at 0x108521d30>, deterministic=True) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method create_function of sqlite3.Connection object at 0x10645db70>, 'floor', 1, <built-in function floor>, deterministic=True)
+aiosqlite - DEBUG - operation functools.partial(<built-in method create_function of sqlite3.Connection object at 0x10645db70>, 'floor', 1, <built-in function floor>, deterministic=True) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b1f0>, 'PRAGMA read_uncommitted', [])
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b1f0>, 'PRAGMA read_uncommitted', []) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b1f0>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b1f0>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b1f0>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b1f0>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed
+sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("tenants")
+sqlalchemy.engine.Engine - INFO - [raw sql] ()
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("tenants")', ())
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("tenants")', ()) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>) completed
+sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("users")
+sqlalchemy.engine.Engine - INFO - [raw sql] ()
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("users")', ())
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("users")', ()) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>) completed
+sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("brands")
+sqlalchemy.engine.Engine - INFO - [raw sql] ()
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("brands")', ())
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("brands")', ()) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>) completed
+sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("incidents")
+sqlalchemy.engine.Engine - INFO - [raw sql] ()
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("incidents")', ())
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("incidents")', ()) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>) completed
+sqlalchemy.engine.Engine - INFO - PRAGMA main.table_info("reports")
+sqlalchemy.engine.Engine - INFO - [raw sql] ()
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("reports")', ())
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'PRAGMA main.table_info("reports")', ()) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>) completed
+sqlalchemy.engine.Engine - INFO - COMMIT
+aiosqlite - DEBUG - executing functools.partial(<built-in method commit of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method commit of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed
+app.main - INFO - Database tables created successfully.
+sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+sqlalchemy.engine.Engine - INFO - SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at 
+FROM users 
+WHERE users.email = ?
+sqlalchemy.engine.Engine - INFO - [generated in 0.00007s] ('admin@trusyn.io',)
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at \nFROM users \nWHERE users.email = ?', ('admin@trusyn.io',))
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108e0b180>, 'SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at \nFROM users \nWHERE users.email = ?', ('admin@trusyn.io',)) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108e0b180>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108e0b180>) completed
+sqlalchemy.engine.Engine - INFO - ROLLBACK
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed
+python_multipart.multipart - DEBUG - Calling on_field_start with no data
+python_multipart.multipart - DEBUG - Calling on_field_name with data[0:8]
+python_multipart.multipart - DEBUG - Calling on_field_data with data[9:24]
+python_multipart.multipart - DEBUG - Calling on_field_end with no data
+python_multipart.multipart - DEBUG - Calling on_field_start with no data
+python_multipart.multipart - DEBUG - Calling on_field_name with data[25:33]
+python_multipart.multipart - DEBUG - Calling on_field_data with data[34:45]
+python_multipart.multipart - DEBUG - Calling on_field_end with no data
+python_multipart.multipart - DEBUG - Calling on_end with no data
+sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+sqlalchemy.engine.Engine - INFO - SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at 
+FROM users 
+WHERE users.email = ?
+sqlalchemy.engine.Engine - INFO - [cached since 4.698s ago] ('admin@trusyn.io',)
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108f6b340>, 'SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at \nFROM users \nWHERE users.email = ?', ('admin@trusyn.io',))
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108f6b340>, 'SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at \nFROM users \nWHERE users.email = ?', ('admin@trusyn.io',)) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108f6b340>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108f6b340>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108f6b340>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108f6b340>) completed
+passlib.handlers.bcrypt - DEBUG - detected 'bcrypt' backend, version '3.2.2'
+passlib.handlers.bcrypt - DEBUG - 'bcrypt' backend lacks $2$ support, enabling workaround
+sqlalchemy.engine.Engine - INFO - ROLLBACK
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed
+sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+sqlalchemy.engine.Engine - INFO - SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at 
+FROM users 
+WHERE users.id = ?
+sqlalchemy.engine.Engine - INFO - [generated in 0.00006s] ('f96640901af847fb9dd57d46059dbcad',)
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108fd9960>, 'SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at \nFROM users \nWHERE users.id = ?', ('f96640901af847fb9dd57d46059dbcad',))
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108fd9960>, 'SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at \nFROM users \nWHERE users.id = ?', ('f96640901af847fb9dd57d46059dbcad',)) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108fd9960>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108fd9960>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108fd9960>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108fd9960>) completed
+sqlalchemy.engine.Engine - INFO - INSERT INTO brands (id, tenant_id, name, official_domains, keywords, logo_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+sqlalchemy.engine.Engine - INFO - [generated in 0.00008s] ('39f356eecad14e73a0e3362914624471', '87113056e8e042ff954ada1d56543281', 'TrusynBank', 'trusynbank.com', 'bank,finance', '', '2026-05-01 03:58:21.353608')
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108fd9960>, 'INSERT INTO brands (id, tenant_id, name, official_domains, keywords, logo_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', ('39f356eecad14e73a0e3362914624471', '87113056e8e042ff954ada1d56543281', 'TrusynBank', 'trusynbank.com', 'bank,finance', '', '2026-05-01 03:58:21.353608'))
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108fd9960>, 'INSERT INTO brands (id, tenant_id, name, official_domains, keywords, logo_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)', ('39f356eecad14e73a0e3362914624471', '87113056e8e042ff954ada1d56543281', 'TrusynBank', 'trusynbank.com', 'bank,finance', '', '2026-05-01 03:58:21.353608')) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108fd9960>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108fd9960>) completed
+sqlalchemy.engine.Engine - INFO - COMMIT
+aiosqlite - DEBUG - executing functools.partial(<built-in method commit of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method commit of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed
+sqlalchemy.engine.Engine - INFO - BEGIN (implicit)
+sqlalchemy.engine.Engine - INFO - SELECT brands.id, brands.tenant_id, brands.name, brands.official_domains, brands.keywords, brands.logo_url, brands.created_at 
+FROM brands 
+WHERE brands.id = ?
+sqlalchemy.engine.Engine - INFO - [generated in 0.00005s] ('39f356eecad14e73a0e3362914624471',)
+aiosqlite - DEBUG - executing functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method cursor of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108fd9810>, 'SELECT brands.id, brands.tenant_id, brands.name, brands.official_domains, brands.keywords, brands.logo_url, brands.created_at \nFROM brands \nWHERE brands.id = ?', ('39f356eecad14e73a0e3362914624471',))
+aiosqlite - DEBUG - operation functools.partial(<built-in method execute of sqlite3.Cursor object at 0x108fd9810>, 'SELECT brands.id, brands.tenant_id, brands.name, brands.official_domains, brands.keywords, brands.logo_url, brands.created_at \nFROM brands \nWHERE brands.id = ?', ('39f356eecad14e73a0e3362914624471',)) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108fd9810>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method fetchall of sqlite3.Cursor object at 0x108fd9810>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method close of sqlite3.Cursor object at 0x108fd9810>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method close of sqlite3.Cursor object at 0x108fd9810>) completed
+sqlalchemy.engine.Engine - INFO - ROLLBACK
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed
+aiosqlite - DEBUG - executing functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>)
+aiosqlite - DEBUG - operation functools.partial(<built-in method rollback of sqlite3.Connection object at 0x10645db70>) completed

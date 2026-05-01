@@ -1,0 +1,22 @@
+INFO:     Started server process [13229]
+INFO:     Waiting for application startup.
+2026-05-01 06:57:51,184 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-05-01 06:57:51,184 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("tenants")
+2026-05-01 06:57:51,184 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-05-01 06:57:51,185 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-05-01 06:57:51,185 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-05-01 06:57:51,185 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("brands")
+2026-05-01 06:57:51,185 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-05-01 06:57:51,185 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("incidents")
+2026-05-01 06:57:51,185 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-05-01 06:57:51,185 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("reports")
+2026-05-01 06:57:51,185 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-05-01 06:57:51,186 INFO sqlalchemy.engine.Engine COMMIT
+2026-05-01 06:57:51,186 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-05-01 06:57:51,190 INFO sqlalchemy.engine.Engine SELECT users.id, users.tenant_id, users.email, users.password_hash, users.role, users.created_at 
+FROM users 
+WHERE users.email = ?
+2026-05-01 06:57:51,190 INFO sqlalchemy.engine.Engine [generated in 0.00006s] ('admin@trusyn.io',)
+2026-05-01 06:57:51,190 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)

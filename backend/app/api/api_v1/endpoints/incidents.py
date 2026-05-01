@@ -3,12 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+import asyncio
 
 from app.api import deps
 from app.core.database import get_db
 from app.models.models import Incident, User, Brand
 from app.schemas.incident import Incident as IncidentSchema, IncidentCreate
-from app.tasks.scanner import analyze_incident
+from app.tasks.scanner import analyze_incident, analyze_incident_async
 from app.tasks.reporter import send_abuse_reports
 
 router = APIRouter()
@@ -20,9 +21,6 @@ async def read_incidents(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    """
-    Retrieve incidents for the current tenant.
-    """
     result = await db.execute(
         select(Incident)
         .join(Brand)
@@ -40,10 +38,6 @@ async def create_incident(
     incident_in: IncidentCreate,
     current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
-    """
-    Create a new incident (manual entry) and trigger analysis.
-    """
-    # Verify brand belongs to tenant
     result = await db.execute(
         select(Brand).where(Brand.id == incident_in.brand_id, Brand.tenant_id == current_user.tenant_id)
     )
@@ -56,8 +50,7 @@ async def create_incident(
     await db.commit()
     await db.refresh(incident)
     
-    # Trigger async analysis
-    analyze_incident.delay(str(incident.id))
+    asyncio.create_task(analyze_incident_async(str(incident.id)))
     
     return incident
 
@@ -68,9 +61,6 @@ async def trigger_report(
     id: str,
     current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
-    """
-    Manually trigger abuse reports for an incident.
-    """
     result = await db.execute(
         select(Incident)
         .join(Brand)
