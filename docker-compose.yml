@@ -4,23 +4,27 @@ services:
   db:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-trusyn}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: trusyn_secure_db_pass_2026
+      POSTGRES_DB: trusyn
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - coolify
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
+    networks:
+      - coolify
     restart: unless-stopped
 
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-trusyn}
+      DATABASE_URL: postgresql+asyncpg://postgres:trusyn_secure_db_pass_2026@db:5432/trusyn
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
@@ -28,49 +32,59 @@ services:
     depends_on:
       - db
       - redis
+    networks:
+      - coolify
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.trusyn-backend-final.rule=Host(`api.trusyn.io`)"
-      - "traefik.http.routers.trusyn-backend-final.entrypoints=http"
-      - "traefik.http.services.trusyn-backend-final.loadbalancer.server.port=8000"
+      - "traefik.http.routers.trusyn-backend.rule=Host(`api.trusyn.io`)"
+      - "traefik.http.services.trusyn-backend.loadbalancer.server.port=8000"
     restart: unless-stopped
 
   worker:
     build: ./backend
     command: celery -A app.core.celery_app worker --loglevel=info
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-trusyn}
+      - DATABASE_URL=postgresql+asyncpg://postgres:trusyn_secure_db_pass_2026@db:5432/trusyn
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
       - redis
+    networks:
+      - coolify
     restart: unless-stopped
 
   ct_monitor:
     build: ./backend
     command: python app/tasks/ct_monitor.py
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-trusyn}
+      - DATABASE_URL=postgresql+asyncpg://postgres:trusyn_secure_db_pass_2026@db:5432/trusyn
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
+    networks:
+      - coolify
     restart: unless-stopped
 
   frontend:
     build: ./frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       NEXT_PUBLIC_API_URL: https://api.trusyn.io/api/v1
     depends_on:
       - backend
+    networks:
+      - coolify
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.trusyn-frontend-final.rule=Host(`trusyn.io`)"
-      - "traefik.http.routers.trusyn-frontend-final.entrypoints=http"
-      - "traefik.http.services.trusyn-frontend-final.loadbalancer.server.port=3000"
+      - "traefik.http.routers.trusyn-frontend.rule=Host(`trusyn.io`)"
+      - "traefik.http.services.trusyn-frontend.loadbalancer.server.port=3000"
     restart: unless-stopped
+
+networks:
+  coolify:
+    external: true
 
 volumes:
   postgres_data:
