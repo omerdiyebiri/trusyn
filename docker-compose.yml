@@ -27,10 +27,10 @@ services:
       - db
       - redis
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.trusyn-backend.rule=Host(`api.trusyn.io`)
-      - traefik.http.routers.trusyn-backend.entrypoints=http
-      - traefik.http.services.trusyn-backend.loadbalancer.server.port=8000
+      - "traefik.enable=true"
+      - "traefik.http.routers.trusyn-backend-new.rule=Host(`api.trusyn.io`)"
+      - "traefik.http.routers.trusyn-backend-new.entrypoints=http"
+      - "traefik.http.services.trusyn-backend-new.loadbalancer.server.port=8000"
     restart: unless-stopped
 
   worker:
@@ -64,10 +64,10 @@ services:
     depends_on:
       - backend
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.trusyn-frontend.rule=Host(`trusyn.io`)
-      - traefik.http.routers.trusyn-frontend.entrypoints=http
-      - traefik.http.services.trusyn-frontend.loadbalancer.server.port=3000
+      - "traefik.enable=true"
+      - "traefik.http.routers.trusyn-frontend-new.rule=Host(`trusyn.io`)"
+      - "traefik.http.routers.trusyn-frontend-new.entrypoints=http"
+      - "traefik.http.services.trusyn-frontend-new.loadbalancer.server.port=3000"
     restart: unless-stopped
 
 volumes:
