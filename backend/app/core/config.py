@@ -12,11 +12,17 @@ class Settings(BaseSettings):
     # SMTP Settings
     SMTP_TLS: bool = True
     SMTP_PORT: Optional[int] = 587
-    SMTP_HOST: Optional[str] = None
-    SMTP_USER: Optional[str] = None
+    SMTP_HOST: Optional[str] = "smtp.gmail.com"
+    SMTP_USER: Optional[str] = "takedowns@trusyn.io"
     SMTP_PASSWORD: Optional[str] = None
-    EMAILS_FROM_EMAIL: Optional[str] = "abuse-report@trusyn.io"
+    EMAILS_FROM_EMAIL: Optional[str] = "takedowns@trusyn.io"
     EMAILS_FROM_NAME: Optional[str] = "Trusyn Brand Protection"
+
+    # IMAP Settings (For tracking replies)
+    IMAP_HOST: str = "imap.gmail.com"
+    IMAP_PORT: int = 993
+    IMAP_USER: str = "takedowns@trusyn.io"
+    IMAP_PASSWORD: Optional[str] = None # Same as SMTP password usually
 
     model_config = SettingsConfigDict(
         case_sensitive=True,
