@@ -47,12 +47,11 @@ export default function DashboardPage() {
       await api.post('/incidents/', {
         brand_id: scanBrandId,
         target_url: scanUrl.startsWith('http') ? scanUrl : `http://${scanUrl}`,
-        status: 'NEW',
-        threat_type: 'PHISHING'
+        threat_type: 'phishing',
       });
       setScanUrl('');
       fetchData();
-      alert('Manual scan triggered successfully!');
+      alert('Manual scan triggered. Evidence collection started in the background.');
     } catch (error) {
       alert('Error triggering scan');
     } finally {
@@ -186,10 +185,11 @@ export default function DashboardPage() {
 
       {/* Modal */}
       {selectedIncident && (
-        <IncidentDetailModal 
-          incident={selectedIncident} 
-          brand={getBrandForIncident(selectedIncident.brand_id)} 
-          onClose={() => setSelectedIncident(null)} 
+        <IncidentDetailModal
+          incident={selectedIncident}
+          brand={getBrandForIncident(selectedIncident.brand_id)}
+          onClose={() => setSelectedIncident(null)}
+          onUpdated={fetchData}
         />
       )}
     </div>

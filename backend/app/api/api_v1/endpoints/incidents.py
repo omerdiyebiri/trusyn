@@ -8,7 +8,7 @@ import asyncio
 from app.api import deps
 from app.core.database import get_db
 from app.models.models import Incident, User, Brand
-from app.schemas.incident import Incident as IncidentSchema, IncidentCreate
+from app.schemas.incident import Incident as IncidentSchema, IncidentCreate, IncidentUpdate
 from app.tasks.scanner import analyze_incident, analyze_incident_async
 from app.tasks.reporter import send_abuse_reports
 
@@ -61,6 +61,11 @@ async def trigger_report(
     id: str,
     current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
+    """
+    Trigger abuse report sending for an incident.
+    Determines applicable recipients (Cloudflare, hosting, registrar, Google DMCA)
+    based on WHOIS/DNS evidence, then dispatches emails via Celery.
+    """
     result = await db.execute(
         select(Incident)
         .join(Brand)
@@ -69,6 +74,35 @@ async def trigger_report(
     incident = result.scalars().first()
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
-    
+
     send_abuse_reports.delay(str(incident.id))
     return {"message": "Report task triggered"}
+
+@router.patch("/{id}", response_model=IncidentSchema)
+async def update_incident(
+    *,
+    db: AsyncSession = Depends(get_db),
+    id: str,
+    incident_in: IncidentUpdate,
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """
+    Update an incident (e.g. mark as resolved, change status, override threat_type).
+    """
+    result = await db.execute(
+        select(Incident)
+        .join(Brand)
+        .where(Incident.id == id, Brand.tenant_id == current_user.tenant_id)
+    )
+    incident = result.scalars().first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    update_data = incident_in.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(incident, field, value)
+
+    db.add(incident)
+    await db.commit()
+    await db.refresh(incident)
+    return incident

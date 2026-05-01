@@ -57,7 +57,7 @@ async def process_certstream_event(message, context):
                     new_incident = Incident(
                         brand_id=brand.id,
                         target_url=f"http://{domain}",
-                        status=IncidentStatus.NEW,
+                        status=IncidentStatus.DETECTED,
                         threat_type=ThreatType.TYPOSQUATTING if is_typosquat else ThreatType.BRAND_IMPERSONATION,
                         confidence_score=0.9 if is_typosquat else 0.7
                     )
