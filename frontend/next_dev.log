@@ -12,3 +12,4 @@
  GET /dashboard 200 in 187ms (next.js: 178ms, application-code: 9ms)
  GET /dashboard/brands 404 in 27ms (next.js: 7ms, application-code: 20ms)
  GET /dashboard/brands 404 in 27ms (next.js: 3ms, application-code: 24ms)
+✓ Compiled in 42ms
