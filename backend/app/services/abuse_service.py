@@ -97,6 +97,36 @@ Trusyn Trust & Safety"""
         
         return {"subject": subject, "body": body, "recipient": "abuse@cloudflare.com"}
 
+    def prepare_registrar_report(self, incident: Incident, brand: Brand, registrar_name: str, registrar_email: str) -> Dict[str, str]:
+        """Generates a legal/technical report for the Domain Registrar."""
+        target_domain = incident.target_url.split("//")[-1].split("/")[0]
+        obfuscated_url = self.obfuscate_url(incident.target_url)
+        
+        subject = f"Urgent: Phishing Infrastructure Notification - {target_domain} - {brand.name}"
+        
+        body = f"""To the Abuse Department of {registrar_name},
+
+This is a formal notification regarding a domain registered through your services: {target_domain}.
+
+Our security systems have identified that this domain is being used to facilitate a Phishing attack targeting our customer, {brand.name}. This activity constitutes a direct violation of your Anti-Abuse Policies and ICANN’s Registrar Accreditation Agreement (RAA) regarding security threats.
+
+Incident Details:
+Target Brand: {brand.name}
+Official Brand URL: {brand.official_domains}
+Phishing URL: {obfuscated_url}
+Discovery Date: {incident.discovered_at or "Recent"}
+
+Technical Evidence:
+The domain {target_domain} is hosting a fraudulent website designed to steal sensitive user credentials by impersonating {brand.name}. We have collected forensic evidence, including full DOM snapshots and high-resolution screenshots, proving the malicious nature of this registration.
+
+Requested Action:
+We kindly request you to immediately suspend this domain to mitigate further harm to innocent users. Please acknowledge receipt of this report and inform us of the actions taken.
+
+Regards,
+Trusyn Brand Protection Team (on behalf of {brand.name})"""
+        
+        return {"subject": subject, "body": body, "recipient": registrar_email}
+
     def prepare_netcraft_style_report(self, incident: Incident, brand: Brand, origin_ip: str = "Unknown") -> Dict[str, str]:
         """Generates a detailed report similar to Netcraft/CleanUP standards."""
         target_domain = incident.target_url.split("//")[-1].split("/")[0]
