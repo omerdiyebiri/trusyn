@@ -17,3 +17,5 @@ playwright
 python-whois
 aiosmtplib
 certstream
+Levenshtein
+fpdf2
