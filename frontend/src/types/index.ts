@@ -28,10 +28,11 @@ export interface Incident {
   id: string;
   brand_id: string;
   target_url: string;
-  status: 'detected' | 'analyzing' | 'validated' | 'reported' | 'resolved' | 'false_positive';
-  threat_type?: string;
+  status: 'NEW' | 'ANALYZING' | 'VALIDATED' | 'REPORTED' | 'RESOLVED' | 'FALSE_POSITIVE';
+  threat_type?: 'PHISHING' | 'BRAND_IMPERSONATION' | 'TYPOSQUATTING';
   confidence_score?: number;
   screenshot_path?: string;
+  whois_raw?: string;
   discovered_at: string;
 }
 
