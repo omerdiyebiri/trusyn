@@ -29,6 +29,7 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
   const [isReporting, setIsReporting] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [isIgnoring, setIsIgnoring] = useState(false);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
 
   const fetchReports = async () => {
@@ -51,6 +52,19 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
     if (score > 0.8) return 'text-red-500';
     if (score > 0.5) return 'text-yellow-500';
     return 'text-blue-500';
+  };
+
+  const reanalyze = async () => {
+    setIsReanalyzing(true);
+    try {
+      await api.post(`/incidents/${incident.id}/reanalyze`);
+      alert('Re-analysis started. WHOIS / screenshot / DNS will refresh in ~30 seconds.');
+      onUpdated?.();
+    } catch {
+      alert('Failed to trigger re-analysis.');
+    } finally {
+      setIsReanalyzing(false);
+    }
   };
 
   const triggerReports = async () => {
@@ -151,8 +165,17 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
               </div>
 
               <div className="bg-gray-800 p-4 rounded-lg">
-                <span className="text-gray-400 text-xs uppercase font-bold">WHOIS Excerpt</span>
-                <pre className="text-xs text-green-500 mt-2 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-400 text-xs uppercase font-bold">WHOIS Excerpt</span>
+                  <button
+                    onClick={reanalyze}
+                    disabled={isReanalyzing}
+                    className="text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white px-3 py-1 rounded transition-colors"
+                  >
+                    {isReanalyzing ? 'Re-running…' : 'Re-run Analysis'}
+                  </button>
+                </div>
+                <pre className="text-xs text-green-500 whitespace-pre-wrap max-h-40 overflow-y-auto">
                   {incident.whois_raw || 'No WHOIS data available yet — evidence collection may still be in progress.'}
                 </pre>
               </div>

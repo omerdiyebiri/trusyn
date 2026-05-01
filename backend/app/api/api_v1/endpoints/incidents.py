@@ -80,6 +80,25 @@ async def trigger_report(
     send_abuse_reports.delay(str(incident.id))
     return {"message": "Report task triggered"}
 
+@router.post("/{id}/reanalyze")
+async def reanalyze_incident(
+    *,
+    db: AsyncSession = Depends(get_db),
+    id: str,
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Re-run evidence collection (Playwright + WHOIS + DNS) for an incident."""
+    result = await db.execute(
+        select(Incident)
+        .join(Brand)
+        .where(Incident.id == id, Brand.tenant_id == current_user.tenant_id)
+    )
+    incident = result.scalars().first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    asyncio.create_task(analyze_incident_async(str(incident.id)))
+    return {"message": "Re-analysis started in background"}
+
 @router.get("/{id}/reports", response_model=List[ReportSchema])
 async def list_incident_reports(
     *,

@@ -46,12 +46,15 @@ from app.services.abuse_service import (
 from app.services.origin_ip_service import (
     discover_origin_ip,
     is_cloudflare_ns,
+    lookup_ip_org,
+    resolve_a_records,
 )
 from app.services.provider_registry import (
     fallback_abuse_email,
     lookup_hosting,
     lookup_registrar,
 )
+from app.services.whois_service import whois_service
 
 
 logger = logging.getLogger(__name__)
@@ -155,6 +158,20 @@ async def send_abuse_reports_async(incident_id: str) -> None:
         brand = incident.brand
 
         whois_data = _parse_whois_blob(incident.whois_raw or "")
+        # Run-time fallback: if scanner's whois pass returned nothing or pre-RDAP
+        # data is missing key fields, retry with the current whois_service
+        # (which now has RDAP first).
+        if not whois_data or not whois_data.get("registrar"):
+            domain_for_whois = (
+                incident.target_url.split("//", 1)[-1].split("/", 1)[0]
+                if incident.target_url else ""
+            )
+            fresh = await asyncio.get_event_loop().run_in_executor(
+                None, whois_service.get_domain_info, domain_for_whois
+            )
+            if fresh:
+                whois_data = fresh
+                incident.whois_raw = str(fresh)
         registrar_field = _first(whois_data.get("registrar"))
         ns_records = whois_data.get("name_servers")
         registrar_email_from_whois = None
@@ -185,17 +202,32 @@ async def send_abuse_reports_async(incident_id: str) -> None:
             r_form = None
 
         # ---- Resolve hosting abuse channel ----
+        # Prefer IP RDAP lookup (gives the actual hosting org/AS), fall back to
+        # WHOIS .org field (which is usually the registrar, not the host).
         hosting_entry = None
-        host_org = _first(whois_data.get("org"))
+        ip_for_lookup = origin_ip
+        if not ip_for_lookup:
+            a_records = await resolve_a_records(domain)
+            if a_records:
+                ip_for_lookup = a_records[0]
+        ip_org, ip_abuse = (None, None)
+        if ip_for_lookup:
+            ip_org, ip_abuse = await asyncio.get_event_loop().run_in_executor(
+                None, lookup_ip_org, ip_for_lookup
+            )
+        host_org = ip_org or _first(whois_data.get("org"))
         if host_org:
             hosting_entry = lookup_hosting(host_org)
         if hosting_entry:
             h_name, h_email, h_form, _ = hosting_entry
+            # Prefer IP-RDAP-derived abuse email when registry knows it
+            if ip_abuse:
+                h_email = ip_abuse
         else:
-            # If we can't resolve, fall back to abuse@<reverse-dns-org>
             h_name = host_org or "the hosting provider"
-            h_email = (registrar_email_from_whois
-                       or (fallback_abuse_email(host_org) if host_org else None))
+            h_email = ip_abuse or (
+                fallback_abuse_email(host_org) if host_org else None
+            )
             h_form = None
 
         # ---- Dispatch by threat type ----
