@@ -45,13 +45,20 @@ async def analyze_incident_async(incident_id: str):
         except Exception:
             pass
 
-        # 3. Screenshot
+        # 3. Comprehensive Evidence Gathering (Screenshot, DOM, Title)
         try:
-            screenshot_path = await screenshot_service.take_screenshot(incident.target_url, str(incident.id))
-            if screenshot_path:
-                incident.screenshot_path = screenshot_path
-        except Exception:
-            pass
+            evidence = await screenshot_service.gather_evidence(incident.target_url, str(incident.id))
+            if evidence["screenshot_path"]:
+                incident.screenshot_path = evidence["screenshot_path"]
+            
+            # Log additional evidence for now (can be moved to DB columns later)
+            if evidence["page_title"]:
+                logger.info(f"Incident {incident_id} Page Title: {evidence['page_title']}")
+            if evidence["dom_path"]:
+                logger.info(f"Incident {incident_id} DOM saved to: {evidence['dom_path']}")
+                
+        except Exception as e:
+            logger.error(f"Evidence gathering failed for {incident_id}: {e}")
         
         # Finalize
         incident.status = IncidentStatus.VALIDATED
