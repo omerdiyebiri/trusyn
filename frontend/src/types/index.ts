@@ -21,19 +21,62 @@ export interface Brand {
   official_domains?: string;
   keywords?: string;
   logo_url?: string;
+  country_restrictions?: string;
   created_at: string;
 }
+
+export type IncidentStatus =
+  | 'detected'
+  | 'analyzing'
+  | 'validated'
+  | 'reported'
+  | 'resolved'
+  | 'false_positive';
+
+export type ThreatType = 'phishing' | 'brand_impersonation' | 'typosquatting';
 
 export interface Incident {
   id: string;
   brand_id: string;
   target_url: string;
-  status: 'NEW' | 'ANALYZING' | 'VALIDATED' | 'REPORTED' | 'RESOLVED' | 'FALSE_POSITIVE';
-  threat_type?: 'PHISHING' | 'BRAND_IMPERSONATION' | 'TYPOSQUATTING';
+  status: IncidentStatus;
+  threat_type?: ThreatType;
   confidence_score?: number;
   screenshot_path?: string;
   whois_raw?: string;
   discovered_at: string;
+}
+
+export type RecipientType =
+  | 'cloudflare'
+  | 'hosting'
+  | 'registrar'
+  | 'google_safebrowsing'
+  | 'google_dmca';
+
+export type ReportStatus =
+  | 'pending'
+  | 'sent'
+  | 'form_only'
+  | 'received'
+  | 'actioned'
+  | 'declined'
+  | 'failed'
+  | 'pending_review';
+
+export interface Report {
+  id: string;
+  incident_id: string;
+  recipient_type?: RecipientType;
+  recipient_email?: string;
+  recipient_form_url?: string;
+  recipient_name?: string;
+  subject?: string;
+  message_id?: string;
+  status?: ReportStatus;
+  error_message?: string;
+  sent_at?: string;
+  raw_content?: string;
 }
 
 export interface AuthResponse {

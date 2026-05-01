@@ -4,8 +4,18 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { Brand } from '@/types';
 
-type BrandFormState = { name: string; official_domains: string; keywords: string };
-const emptyForm: BrandFormState = { name: '', official_domains: '', keywords: '' };
+type BrandFormState = {
+  name: string;
+  official_domains: string;
+  keywords: string;
+  country_restrictions: string;
+};
+const emptyForm: BrandFormState = {
+  name: '',
+  official_domains: '',
+  keywords: '',
+  country_restrictions: 'Worldwide',
+};
 
 export default function BrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
@@ -42,6 +52,7 @@ export default function BrandsPage() {
       name: brand.name ?? '',
       official_domains: brand.official_domains ?? '',
       keywords: brand.keywords ?? '',
+      country_restrictions: brand.country_restrictions ?? 'Worldwide',
     });
     setIsModalOpen(true);
   };
@@ -161,6 +172,20 @@ export default function BrandsPage() {
                   value={form.keywords}
                   onChange={(e) => setForm({ ...form, keywords: e.target.value })}
                   placeholder="trusyn, login-trusyn, trusyn-verify"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
+                  Country Restrictions
+                  <span className="text-gray-600 font-normal normal-case ml-2">
+                    (mentioned in abuse reports — Netcraft pattern)
+                  </span>
+                </label>
+                <input
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500"
+                  value={form.country_restrictions}
+                  onChange={(e) => setForm({ ...form, country_restrictions: e.target.value })}
+                  placeholder="Worldwide, or e.g. Turkey"
                 />
               </div>
               <div className="flex gap-3 pt-4">

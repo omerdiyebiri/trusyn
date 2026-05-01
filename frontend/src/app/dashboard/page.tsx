@@ -108,7 +108,7 @@ export default function DashboardPage() {
         <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700 shadow-sm hover:border-gray-600 transition-all">
           <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider">Active Incidents</h3>
           <p className="text-4xl font-bold mt-2 text-red-500">
-            {incidents.filter(i => i.status !== 'RESOLVED' && i.status !== 'FALSE_POSITIVE').length}
+            {incidents.filter(i => i.status !== 'resolved' && i.status !== 'false_positive').length}
           </p>
         </div>
         <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700 shadow-sm hover:border-gray-600 transition-all">
@@ -140,9 +140,12 @@ export default function DashboardPage() {
                 {[...incidents].reverse().map((incident) => (
                   <tr key={incident.id} className="hover:bg-gray-700/30 transition-colors group">
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                        incident.status === 'VALIDATED' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
-                        incident.status === 'ANALYZING' ? 'bg-blue-500/10 text-blue-500 animate-pulse' :
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
+                        incident.status === 'validated' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                        incident.status === 'reported' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
+                        incident.status === 'resolved' ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
+                        incident.status === 'analyzing' ? 'bg-blue-500/10 text-blue-500 animate-pulse' :
+                        incident.status === 'false_positive' ? 'bg-gray-700 text-gray-500' :
                         'bg-gray-700 text-gray-400'
                       }`}>
                         {incident.status}

@@ -9,6 +9,8 @@ from app.api import deps
 from app.core.database import get_db
 from app.models.models import Incident, User, Brand
 from app.schemas.incident import Incident as IncidentSchema, IncidentCreate, IncidentUpdate
+from app.schemas.report import Report as ReportSchema
+from app.models.models import Report
 from app.tasks.scanner import analyze_incident, analyze_incident_async
 from app.tasks.reporter import send_abuse_reports
 
@@ -77,6 +79,30 @@ async def trigger_report(
 
     send_abuse_reports.delay(str(incident.id))
     return {"message": "Report task triggered"}
+
+@router.get("/{id}/reports", response_model=List[ReportSchema])
+async def list_incident_reports(
+    *,
+    db: AsyncSession = Depends(get_db),
+    id: str,
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """List dispatched abuse reports for an incident, ordered by sent_at DESC."""
+    result = await db.execute(
+        select(Incident)
+        .join(Brand)
+        .where(Incident.id == id, Brand.tenant_id == current_user.tenant_id)
+    )
+    incident = result.scalars().first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    reports = await db.execute(
+        select(Report)
+        .where(Report.incident_id == incident.id)
+        .order_by(Report.sent_at.desc())
+    )
+    return reports.scalars().all()
 
 @router.patch("/{id}", response_model=IncidentSchema)
 async def update_incident(

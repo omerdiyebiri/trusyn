@@ -4,6 +4,7 @@ import logging
 import asyncio
 from app.api.api_v1.api import api_router
 from app.core.database import engine, Base
+from app.core.migrations import run_idempotent_migrations
 
 # Setup basic logging to file
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='w',
@@ -37,6 +38,7 @@ async def init_tables():
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
             logger.info("Database tables created successfully.")
+            await run_idempotent_migrations(engine)
             
             # Create a test admin user if none exists
             async with AsyncSessionLocal() as db:

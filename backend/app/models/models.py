@@ -47,6 +47,7 @@ class Brand(Base):
     official_domains = Column(Text)  # JSON or comma-separated
     keywords = Column(Text)          # JSON or comma-separated
     logo_url = Column(String, nullable=True)
+    country_restrictions = Column(Text, default="Worldwide")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     tenant = relationship("Tenant", back_populates="brands")
@@ -85,11 +86,17 @@ class RecipientType(str, enum.Enum):
     CLOUDFLARE = "cloudflare"
     HOSTING = "hosting"
     REGISTRAR = "registrar"
+    GOOGLE_SAFEBROWSING = "google_safebrowsing"
     GOOGLE_DMCA = "google_dmca"
 
 class ReportStatus(str, enum.Enum):
+    PENDING = "pending"
     SENT = "sent"
+    FORM_ONLY = "form_only"
     RECEIVED = "received"
+    ACTIONED = "actioned"
+    DECLINED = "declined"
+    FAILED = "failed"
     PENDING_REVIEW = "pending_review"
 
 class Report(Base):
@@ -98,9 +105,14 @@ class Report(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     incident_id = Column(UUID(as_uuid=True), ForeignKey("incidents.id"))
     recipient_type = Column(Enum(RecipientType))
-    recipient_email = Column(String)
+    recipient_email = Column(String, nullable=True)
+    recipient_form_url = Column(String, nullable=True)
+    recipient_name = Column(String, nullable=True)
+    subject = Column(String, nullable=True)
+    message_id = Column(String, nullable=True, index=True)
     sent_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(Enum(ReportStatus), default=ReportStatus.SENT)
+    status = Column(Enum(ReportStatus), default=ReportStatus.PENDING)
+    error_message = Column(Text, nullable=True)
     raw_content = Column(Text)
 
     incident = relationship("Incident", back_populates="reports")

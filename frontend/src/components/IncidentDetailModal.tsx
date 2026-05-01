@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '@/services/api';
-import { Incident, Brand } from '@/types';
+import { Incident, Brand, Report, ReportStatus } from '@/types';
 
 interface IncidentDetailModalProps {
   incident: Incident;
@@ -11,11 +11,41 @@ interface IncidentDetailModalProps {
   onUpdated?: () => void;
 }
 
+const STATUS_STYLES: Record<ReportStatus, string> = {
+  pending: 'bg-gray-700 text-gray-300',
+  sent: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  form_only: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+  received: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
+  actioned: 'bg-green-500/10 text-green-400 border border-green-500/20',
+  declined: 'bg-orange-500/10 text-orange-400 border border-orange-500/20',
+  failed: 'bg-red-500/10 text-red-400 border border-red-500/20',
+  pending_review: 'bg-gray-700 text-gray-300',
+};
+
 export default function IncidentDetailModal({ incident, brand, onClose, onUpdated }: IncidentDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'evidence' | 'abuse'>('details');
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
   const [isReporting, setIsReporting] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
   const [isIgnoring, setIsIgnoring] = useState(false);
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
+
+  const fetchReports = async () => {
+    setLoadingReports(true);
+    try {
+      const res = await api.get(`/incidents/${incident.id}/reports`);
+      setReports(res.data);
+    } catch {
+      setReports([]);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'abuse') fetchReports();
+  }, [activeTab, incident.id]);
 
   const getConfidenceColor = (score: number) => {
     if (score > 0.8) return 'text-red-500';
@@ -24,13 +54,14 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
   };
 
   const triggerReports = async () => {
-    if (!confirm(`Send abuse reports for ${incident.target_url}?\n\nThis will dispatch emails to Cloudflare/hosting/registrar abuse desks based on WHOIS evidence.`)) return;
+    if (!confirm(`Send abuse reports for ${incident.target_url}?\n\nThis will dispatch emails to the applicable Cloudflare / hosting / registrar abuse desks based on WHOIS evidence and queue a Google Safe Browsing audit entry.`)) return;
     setIsReporting(true);
     try {
       await api.post(`/incidents/${incident.id}/report`);
-      alert('Abuse reports queued. They will be sent in the background.');
+      alert('Abuse reports queued. They will be sent in the background and appear in this list within ~1 minute.');
+      setTimeout(fetchReports, 3000);
       onUpdated?.();
-    } catch (err) {
+    } catch {
       alert('Failed to trigger reports.');
     } finally {
       setIsReporting(false);
@@ -46,7 +77,7 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
       await api.patch(`/incidents/${incident.id}`, { status });
       onUpdated?.();
       onClose();
-    } catch (err) {
+    } catch {
       alert('Failed to update incident.');
     } finally {
       setIsResolving(false);
@@ -147,24 +178,87 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
               <div className="bg-gray-800 p-4 rounded-lg border border-yellow-900/30">
                 <h4 className="text-yellow-500 font-bold text-sm uppercase mb-2">Auto Dispatch</h4>
                 <p className="text-gray-300 text-sm mb-4">
-                  When triggered, the backend will determine the applicable abuse desks (Cloudflare,
-                  hosting provider, registrar, Google DMCA) from WHOIS/DNS evidence and dispatch
-                  templated emails via SMTP. Each report is logged with status tracking.
+                  Determines applicable abuse desks (Cloudflare, hosting, registrar, Google
+                  Safe Browsing) from WHOIS / DNS evidence and dispatches templated emails
+                  via SMTP. Each report is logged below with status tracking.
                 </p>
-                <button
-                  onClick={triggerReports}
-                  disabled={isReporting}
-                  className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all"
-                >
-                  {isReporting ? 'Dispatching...' : 'Send Abuse Reports'}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={triggerReports}
+                    disabled={isReporting}
+                    className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all"
+                  >
+                    {isReporting ? 'Dispatching...' : 'Send Abuse Reports'}
+                  </button>
+                  <button
+                    onClick={fetchReports}
+                    disabled={loadingReports}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all"
+                  >
+                    {loadingReports ? 'Loading...' : 'Refresh'}
+                  </button>
+                </div>
               </div>
 
-              <div className="bg-gray-800 p-4 rounded-lg">
-                <h4 className="text-gray-400 font-bold text-xs uppercase mb-2">Subject Preview</h4>
-                <p className="text-xs text-gray-300 font-mono">
-                  Urgent: Phishing/Brand Impersonation Notification — {targetHost} — {brand?.name}
-                </p>
+              <div className="bg-gray-800 rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-gray-700">
+                  <h4 className="text-gray-200 font-bold text-sm uppercase">Dispatched Reports</h4>
+                </div>
+                {reports.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500 text-sm">
+                    {loadingReports ? 'Loading…' : 'No reports dispatched yet for this incident.'}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-700/60">
+                    {reports.map((r) => {
+                      const expanded = expandedReportId === r.id;
+                      return (
+                        <div key={r.id} className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-bold uppercase text-gray-300">
+                                  {r.recipient_type?.replace('_', ' ')}
+                                </span>
+                                {r.status && (
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${STATUS_STYLES[r.status] ?? ''}`}>
+                                    {r.status.replace('_', ' ')}
+                                  </span>
+                                )}
+                                {r.recipient_name && (
+                                  <span className="text-xs text-gray-500">— {r.recipient_name}</span>
+                                )}
+                              </div>
+                              <div className="mt-1 text-xs text-gray-400 font-mono break-all">
+                                {r.recipient_email || (r.recipient_form_url ? `form: ${r.recipient_form_url}` : '—')}
+                              </div>
+                              {r.subject && (
+                                <div className="mt-1 text-xs text-gray-300 truncate">{r.subject}</div>
+                              )}
+                              {r.error_message && (
+                                <div className="mt-1 text-xs text-red-400 italic">{r.error_message}</div>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-gray-500 whitespace-nowrap text-right">
+                              {r.sent_at && new Date(r.sent_at).toLocaleString()}
+                              <button
+                                onClick={() => setExpandedReportId(expanded ? null : r.id)}
+                                className="block mt-1 text-blue-400 hover:text-blue-300 underline text-[10px]"
+                              >
+                                {expanded ? 'Hide body' : 'View body'}
+                              </button>
+                            </div>
+                          </div>
+                          {expanded && r.raw_content && (
+                            <pre className="mt-3 text-xs text-gray-300 bg-gray-900 p-3 rounded overflow-x-auto whitespace-pre-wrap">
+                              {r.raw_content}
+                            </pre>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}

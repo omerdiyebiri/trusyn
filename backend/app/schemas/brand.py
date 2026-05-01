@@ -9,6 +9,7 @@ class BrandBase(BaseModel):
     official_domains: Optional[str] = None
     keywords: Optional[str] = None
     logo_url: Optional[str] = None
+    country_restrictions: Optional[str] = None
 
 # Properties to receive via API on creation
 class BrandCreate(BrandBase):
