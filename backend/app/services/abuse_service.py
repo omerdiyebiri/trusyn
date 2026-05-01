@@ -76,6 +76,20 @@ def confidence_band(score: Optional[float]) -> str:
     return "LOW"
 
 
+def vekalet_block(incident: Incident, brand: Brand, indent: str = "  - ") -> str:
+    """Render a single line linking to the public PoA download — only when
+    the brand has an admin-approved vekalet on file. Returns an empty string
+    otherwise so the surrounding template is unaffected. Avoids advertising
+    a 404 URL to abuse desks for brands that don't have one yet."""
+    status = getattr(brand, "vekalet_status", None)
+    if status != "approved":
+        return ""
+    return (
+        f"{indent}Power of attorney from {brand.name}: "
+        f"https://trusyn.io/api/v1/public/incidents/{incident.id}/vekalet\n"
+    )
+
+
 def confidence_explanation(threat_type, score: Optional[float]) -> str:
     """Human-readable rationale paired with the band, suitable for inline
     inclusion in mail body. Does not expose raw decimal."""
@@ -141,8 +155,8 @@ class AbuseService:
             f"  - trusyn-dom-{short_id(incident.id)}.html — DOM snapshot at detection\n"
             f"  - trusyn-whois-{short_id(incident.id)}.txt — WHOIS / RDAP record\n"
             f"  - Public Trusyn incident: https://trusyn.io/incident/{incident.id}\n"
-            f"  - Power of attorney from {brand.name}: "
-            f"https://trusyn.io/api/v1/public/incidents/{incident.id}/vekalet\n\n"
+            f"{vekalet_block(incident, brand)}"
+            "\n"
             "It is possible the attack is geo-restricted; please confirm the page\n"
             "cannot be viewed from these regions before deciding it is resolved:\n"
             f"{country_restrictions}\n\n"
@@ -205,8 +219,8 @@ class AbuseService:
             f"  - trusyn-whois-{short_id(incident.id)}.txt — WHOIS / RDAP record\n"
             f"  - Hosting origin IP: {origin_ip or 'undisclosed (CF proxy)'}\n"
             f"  - Public Trusyn incident: https://trusyn.io/incident/{incident.id}\n"
-            f"  - Power of attorney from {brand.name}: "
-            f"https://trusyn.io/api/v1/public/incidents/{incident.id}/vekalet\n\n"
+            f"{vekalet_block(incident, brand)}"
+            "\n"
             f"Requested action: suspension of {domain} (clientHold or serverHold)\n"
             f"and a confirming response to {settings.EMAILS_FROM_EMAIL}.\n\n"
             f"Please cite incident {incident.id} in any correspondence.\n\n"
@@ -236,7 +250,8 @@ class AbuseService:
             f"  Origin host IP:     {origin_ip or 'undisclosed'}\n"
             f"  Brand impersonated: {brand.name} ({brand.official_domains})\n"
             f"  Trusyn incident:    https://trusyn.io/incident/{incident.id}\n"
-            f"  Power of attorney:  https://trusyn.io/api/v1/public/incidents/{incident.id}/vekalet\n\n"
+            f"{vekalet_block(incident, brand, indent='  Power of attorney:  ')}"
+            "\n"
             "Evidence: DOM snapshot, screenshot, WHOIS record, DNS records.\n\n"
             "Submitted via form for action. This email is logged for audit only.\n\n"
             "Regards,\n"
