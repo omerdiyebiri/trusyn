@@ -9,20 +9,16 @@ services:
       POSTGRES_DB: trusyn
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - coolify
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    networks:
-      - coolify
     restart: unless-stopped
 
   backend:
     build: ./backend
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:trusyn_secure_db_pass_2026@db:5432/trusyn
       REDIS_URL: redis://redis:6379/0
@@ -32,12 +28,6 @@ services:
     depends_on:
       - db
       - redis
-    networks:
-      - coolify
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.trusyn-backend.rule=Host(`api.trusyn.io`)"
-      - "traefik.http.services.trusyn-backend.loadbalancer.server.port=8000"
     restart: unless-stopped
 
   worker:
@@ -50,8 +40,6 @@ services:
     depends_on:
       - db
       - redis
-    networks:
-      - coolify
     restart: unless-stopped
 
   ct_monitor:
@@ -62,29 +50,17 @@ services:
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
-    networks:
-      - coolify
     restart: unless-stopped
 
   frontend:
     build: ./frontend
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_URL: https://api.trusyn.io/api/v1
+      NEXT_PUBLIC_API_URL: http://178.104.229.67:8000/api/v1
     depends_on:
       - backend
-    networks:
-      - coolify
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.trusyn-frontend.rule=Host(`trusyn.io`)"
-      - "traefik.http.services.trusyn-frontend.loadbalancer.server.port=3000"
     restart: unless-stopped
-
-networks:
-  coolify:
-    external: true
 
 volumes:
   postgres_data:
