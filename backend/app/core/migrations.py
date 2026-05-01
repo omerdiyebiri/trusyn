@@ -1,13 +1,20 @@
 """
-Idempotent column-level migrations for runtime use without Alembic.
+Idempotent column-level + enum-level migrations for runtime use without Alembic.
 
-`Base.metadata.create_all` only creates missing TABLES; it cannot add columns to
-existing tables. As Trusyn evolves we add new columns; this helper runs
-`ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for each known schema delta. Postgres
-supports IF NOT EXISTS natively (since 9.6); SQLite (used in some dev setups)
-does not, so we catch and log on SQLite.
+`Base.metadata.create_all` only creates missing TABLES; it cannot add columns or
+extend Postgres ENUM types. As Trusyn evolves we add new fields and new enum
+values; this helper runs:
+  - `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for each known column delta
+  - `ALTER TYPE ... ADD VALUE IF NOT EXISTS` for each known enum value addition
 
-Add a new entry here whenever you add a column to an existing model.
+Postgres supports both IF NOT EXISTS forms (since 9.6); SQLite does not, so we
+catch and log on SQLite.
+
+Note: ALTER TYPE ... ADD VALUE cannot run inside a multi-statement transaction
+on Postgres < 12. We use AUTOCOMMIT for that statement specifically to be safe.
+
+Add a new entry here whenever you add a column / new enum value to an existing
+model.
 """
 
 import logging
@@ -31,18 +38,28 @@ COLUMN_ADDITIONS: List[Tuple[str, str, str]] = [
 ]
 
 
-async def run_idempotent_migrations(engine: AsyncEngine) -> None:
+# (enum_type_name, new_value)
+# SQLAlchemy `Enum(PyEnum)` serializes enum members by their NAME (uppercase),
+# not their .value. So Postgres enum labels are uppercase too.
+ENUM_VALUE_ADDITIONS: List[Tuple[str, str]] = [
+    ("recipienttype", "GOOGLE_SAFEBROWSING"),
+    ("reportstatus", "PENDING"),
+    ("reportstatus", "FORM_ONLY"),
+    ("reportstatus", "ACTIONED"),
+    ("reportstatus", "DECLINED"),
+    ("reportstatus", "FAILED"),
+]
+
+
+async def _run_column_additions(engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
         for table, column, ddl in COLUMN_ADDITIONS:
             try:
-                # Postgres-flavored ADD COLUMN IF NOT EXISTS
                 await conn.execute(text(
                     f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {ddl}"
                 ))
                 logger.info("Migration ensured: %s.%s", table, column)
             except Exception as exc:
-                # SQLite path or older Postgres without IF NOT EXISTS: try
-                # without IF NOT EXISTS, swallow if already exists.
                 try:
                     await conn.execute(text(
                         f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"
@@ -57,3 +74,30 @@ async def run_idempotent_migrations(engine: AsyncEngine) -> None:
                         "Migration skipped for %s.%s: %s",
                         table, column, exc2,
                     )
+
+
+async def _run_enum_additions(engine: AsyncEngine) -> None:
+    """ALTER TYPE ... ADD VALUE must run in autocommit mode (it cannot be
+    rolled back). We open a fresh connection per statement with isolation
+    AUTOCOMMIT to bypass the implicit transaction."""
+    for enum_name, value in ENUM_VALUE_ADDITIONS:
+        try:
+            async with engine.connect() as conn:
+                ac_conn = await conn.execution_options(
+                    isolation_level="AUTOCOMMIT"
+                )
+                await ac_conn.execute(text(
+                    f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS '{value}'"
+                ))
+                logger.info("Enum ensured: %s += %s", enum_name, value)
+        except Exception as exc:
+            msg = str(exc).lower()
+            if "already exists" in msg or "does not exist" in msg:
+                continue
+            logger.warning("Enum migration skipped %s += %s: %s",
+                           enum_name, value, exc)
+
+
+async def run_idempotent_migrations(engine: AsyncEngine) -> None:
+    await _run_column_additions(engine)
+    await _run_enum_additions(engine)
