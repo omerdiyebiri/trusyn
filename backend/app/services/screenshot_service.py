@@ -25,15 +25,64 @@ class ScreenshotService:
         
         try:
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
-                # Use a real-looking user agent to avoid bot detection
-                context = await browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                browser = await p.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                    ],
                 )
+                # Pose as a Turkish-locale Android Chrome user — many phishing
+                # kits gate on geo + UA + locale and serve a CF challenge to
+                # everyone else. Mobile UA + tr-TR + Istanbul timezone +
+                # geolocation is enough to defeat most JavaScript-based gates;
+                # IP-level geo fences (only Turkish IPs allowed through) still
+                # require a residential proxy in TR — separate decision.
+                context = await browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (Linux; Android 14; SM-S921B) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/130.0.0.0 Mobile Safari/537.36"
+                    ),
+                    viewport={"width": 393, "height": 852},
+                    device_scale_factor=2.625,
+                    is_mobile=True,
+                    has_touch=True,
+                    locale="tr-TR",
+                    timezone_id="Europe/Istanbul",
+                    geolocation={"latitude": 41.0082, "longitude": 28.9784},
+                    permissions=["geolocation"],
+                    extra_http_headers={
+                        "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+                        "Sec-Ch-Ua-Mobile": "?1",
+                        "Sec-Ch-Ua-Platform": '"Android"',
+                    },
+                )
+
+                # Stealth init script — patches the most common headless
+                # detection signals (navigator.webdriver, missing chrome
+                # runtime, languages, plugins). Real anti-bot vendors detect
+                # more than this, but it clears the basic CF JS challenge.
+                await context.add_init_script(
+                    "Object.defineProperty(navigator, 'webdriver', {get: () => undefined});"
+                    "window.chrome = window.chrome || { runtime: {} };"
+                    "Object.defineProperty(navigator, 'languages', "
+                    "{get: () => ['tr-TR', 'tr', 'en']});"
+                    "Object.defineProperty(navigator, 'plugins', "
+                    "{get: () => [1,2,3,4,5]});"
+                )
+
                 page = await context.new_page()
-                
-                # 1. Navigate
-                response = await page.goto(url, timeout=60000, wait_until="networkidle")
+
+                # 1. Navigate. Use 'domcontentloaded' (faster, less likely
+                # to time out on heavy ad-laden phishing kits) then a small
+                # network-idle wait to settle SPA hydration.
+                response = await page.goto(url, timeout=60000,
+                                           wait_until="domcontentloaded")
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
                 evidence["status_code"] = response.status if response else None
                 evidence["page_title"] = await page.title()
                 
