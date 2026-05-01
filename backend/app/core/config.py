@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     IMAP_USER: str = "takedowns@trusyn.io"
     IMAP_PASSWORD: Optional[str] = None # Same as SMTP password usually
 
+    # External threat intel APIs
+    URLSCAN_API_KEY: Optional[str] = None
+    ABUSE_CH_AUTH_KEY: Optional[str] = None  # used by ThreatFox / URLhaus
+    URLSCAN_VISIBILITY: str = "public"  # public | unlisted | private
+
     model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file=".env",

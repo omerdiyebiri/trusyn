@@ -107,13 +107,24 @@ class AbuseService:
 
     def render_hosting(self, incident: Incident, brand: Brand,
                        hosting_email: str, hosting_form_url: Optional[str],
-                       origin_ip: str) -> RenderedReport:
+                       origin_ip: str,
+                       intel_links: Optional[Dict[str, str]] = None) -> RenderedReport:
         domain = domain_of(incident.target_url)
         subject = f"[Trusyn-{short_id(incident.id)}] Phishing on your network: {domain}"
         country_restrictions = (getattr(brand, "country_restrictions", None)
                                 or "Worldwide")
         confidence = confidence_explanation(incident.threat_type,
                                             incident.confidence_score)
+        intel_block = ""
+        if intel_links:
+            lines = []
+            if intel_links.get("urlscan"):
+                lines.append(f"  - URLScan.io public scan: {intel_links['urlscan']}")
+            if intel_links.get("threatfox"):
+                lines.append(f"  - abuse.ch ThreatFox IOC:  {intel_links['threatfox']}")
+            if lines:
+                intel_block = ("\nIndependent verification (publicly inspectable, "
+                               "no Trusyn login required):\n" + "\n".join(lines) + "\n")
         body = (
             "Dear Sir or Madam,\n\n"
             f"You are currently hosting a phishing attack on your network at {origin_ip}:\n\n"
@@ -123,7 +134,8 @@ class AbuseService:
             "and financial data from victims who arrive via SMS, email or paid ads.\n\n"
             f"Confidence: {confidence}\n\n"
             "You can verify the content at the origin with:\n\n"
-            f"  curl -v -H \"Host: {domain}\" {origin_ip}/\n\n"
+            f"  curl -v -H \"Host: {domain}\" {origin_ip}/\n"
+            f"{intel_block}\n"
             "Evidence (attached to this message):\n"
             f"  - trusyn-evidence-{short_id(incident.id)}.png — full-page screenshot\n"
             f"  - trusyn-dom-{short_id(incident.id)}.html — DOM snapshot at detection\n"
@@ -154,12 +166,23 @@ class AbuseService:
                          registrar_name: str, registrar_email: Optional[str],
                          registrar_form_url: Optional[str],
                          origin_ip: Optional[str],
-                         created_at: Optional[str]) -> RenderedReport:
+                         created_at: Optional[str],
+                         intel_links: Optional[Dict[str, str]] = None) -> RenderedReport:
         domain = domain_of(incident.target_url)
         subject = (f"[Trusyn-{short_id(incident.id)}] DNS Abuse (phishing) — "
                    f"{domain} — RAA §3.18")
         confidence = confidence_explanation(incident.threat_type,
                                             incident.confidence_score)
+        intel_block = ""
+        if intel_links:
+            lines = []
+            if intel_links.get("urlscan"):
+                lines.append(f"  - URLScan.io public scan: {intel_links['urlscan']}")
+            if intel_links.get("threatfox"):
+                lines.append(f"  - abuse.ch ThreatFox IOC:  {intel_links['threatfox']}")
+            if lines:
+                intel_block = ("\nIndependent verification (publicly inspectable, "
+                               "no Trusyn login required):\n" + "\n".join(lines) + "\n")
         body = (
             f"To the Abuse Department of {registrar_name},\n\n"
             "This is a formal notice of well-evidenced DNS Abuse at the following\n"
@@ -173,7 +196,7 @@ class AbuseService:
             "amendments to the ICANN Registrar Accreditation Agreement (Section\n"
             "3.18, effective 5 April 2024), registrars are required to take prompt\n"
             "mitigation action against well-evidenced DNS Abuse, of which phishing\n"
-            "is an enumerated category.\n\n"
+            f"is an enumerated category.\n{intel_block}\n"
             "Evidence (attached to this message):\n"
             f"  - trusyn-evidence-{short_id(incident.id)}.png — full-page screenshot\n"
             f"  - trusyn-dom-{short_id(incident.id)}.html — credential-harvesting DOM\n"
@@ -261,6 +284,91 @@ class AbuseService:
             subject=subject,
             body=body,
             extra_headers=self._common_headers(incident, brand, "typosquat"),
+        )
+
+    def render_urlscan_audit(self, incident: Incident, brand: Brand,
+                             scan_uuid: Optional[str],
+                             scan_url: Optional[str],
+                             error: Optional[str]) -> RenderedReport:
+        """Audit row capturing the URLScan.io submission outcome."""
+        domain = domain_of(incident.target_url)
+        subject = (f"[Trusyn-{short_id(incident.id)}] URLScan submission — "
+                   f"{domain}")
+        body = (
+            "Audit log of URLScan.io submission.\n\n"
+            f"Target URL:   {incident.target_url}\n"
+            f"Brand:        {brand.name}\n"
+            f"Scan UUID:    {scan_uuid or '—'}\n"
+            f"Public URL:   {scan_url or '—'}\n"
+            f"Error:        {error or '—'}\n\n"
+            "URLScan publishes the rendered page, screenshots, network log,\n"
+            "and certificate chain for the URL. The public URL above can be\n"
+            "cited in subsequent abuse reports as independent evidence.\n"
+        )
+        return RenderedReport(
+            recipient_type=RecipientType.URLSCAN,
+            recipient_email=None,
+            recipient_form_url=scan_url or "https://urlscan.io/",
+            subject=subject,
+            body=body,
+            extra_headers=self._common_headers(incident, brand, "phishing"),
+            attach_evidence=False,
+        )
+
+    def render_threatfox_audit(self, incident: Incident, brand: Brand,
+                               ioc_id: Optional[str],
+                               public_url: Optional[str],
+                               error: Optional[str]) -> RenderedReport:
+        """Audit row capturing the abuse.ch ThreatFox submission outcome."""
+        domain = domain_of(incident.target_url)
+        subject = (f"[Trusyn-{short_id(incident.id)}] ThreatFox IOC — "
+                   f"{domain}")
+        body = (
+            "Audit log of abuse.ch ThreatFox submission.\n\n"
+            f"Target URL:   {incident.target_url}\n"
+            f"Brand:        {brand.name}\n"
+            f"IOC ID:       {ioc_id or '—'}\n"
+            f"Public URL:   {public_url or '—'}\n"
+            f"Error:        {error or '—'}\n\n"
+            "ThreatFox feeds Cisco Talos, McAfee, browser blockers, and the\n"
+            "wider security community. The IOC is automatically distributed\n"
+            "into the abuse.ch feeds.\n"
+        )
+        return RenderedReport(
+            recipient_type=RecipientType.THREATFOX,
+            recipient_email=None,
+            recipient_form_url=public_url or "https://threatfox.abuse.ch/",
+            subject=subject,
+            body=body,
+            extra_headers=self._common_headers(incident, brand, "phishing"),
+            attach_evidence=False,
+        )
+
+    def render_microsoft_smartscreen(self, incident: Incident,
+                                     brand: Brand) -> RenderedReport:
+        """Form-only submission to Microsoft Defender SmartScreen — operator
+        files via https://www.microsoft.com/en-us/wdsi/support/report-unsafe-site-guest"""
+        domain = domain_of(incident.target_url)
+        subject = (f"[Trusyn-{short_id(incident.id)}] SmartScreen submission "
+                   f"— {domain}")
+        body = (
+            "Field map for Microsoft Defender SmartScreen unsafe-site form:\n"
+            "  https://www.microsoft.com/en-us/wdsi/support/report-unsafe-site-guest\n\n"
+            f"  Address (URL)                : {incident.target_url}\n"
+            f"  Issue                        : Phishing\n"
+            f"  Brand impersonated           : {brand.name}\n"
+            f"  Comments                     : Trusyn incident {incident.id}\n\n"
+            "Submission via the form propagates to Microsoft Edge,\n"
+            "Outlook safe links, and Defender for Endpoint.\n"
+        )
+        return RenderedReport(
+            recipient_type=RecipientType.MICROSOFT_SMARTSCREEN,
+            recipient_email=None,
+            recipient_form_url="https://www.microsoft.com/en-us/wdsi/support/report-unsafe-site-guest",
+            subject=subject,
+            body=body,
+            extra_headers=self._common_headers(incident, brand, "phishing"),
+            attach_evidence=False,
         )
 
     def render_google_safebrowsing(self, incident: Incident,

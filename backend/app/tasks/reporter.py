@@ -43,6 +43,10 @@ from app.services.abuse_service import (
     RenderedReport,
     abuse_service,
 )
+from app.services.intel_service import (
+    submit_threatfox,
+    submit_urlscan,
+)
 from app.services.origin_ip_service import (
     discover_origin_ip,
     is_cloudflare_ns,
@@ -241,11 +245,27 @@ async def send_abuse_reports_async(incident_id: str) -> None:
             )
             await _persist_and_send(db, incident, rendered, r_name)
         else:
+            # ---- Submit to threat-intel platforms FIRST so the public links
+            #      can be cited in the hosting / registrar emails.
+            loop = asyncio.get_event_loop()
+            urlscan_result = await loop.run_in_executor(
+                None, submit_urlscan, incident.target_url, brand.name,
+            )
+            threatfox_result = await loop.run_in_executor(
+                None, submit_threatfox, incident.target_url, brand.name,
+            )
+            intel_links = {}
+            if urlscan_result.get("public_url"):
+                intel_links["urlscan"] = urlscan_result["public_url"]
+            if threatfox_result.get("public_url"):
+                intel_links["threatfox"] = threatfox_result["public_url"]
+
             # Phishing / Brand impersonation flow
             if h_email or h_form:
                 rendered = abuse_service.render_hosting(
                     incident, brand, h_email or "", h_form,
                     origin_ip or "undisclosed",
+                    intel_links=intel_links,
                 )
                 await _persist_and_send(db, incident, rendered, h_name)
 
@@ -253,6 +273,7 @@ async def send_abuse_reports_async(incident_id: str) -> None:
                 rendered = abuse_service.render_registrar(
                     incident, brand, r_name, r_email, r_form,
                     origin_ip, created_at,
+                    intel_links=intel_links,
                 )
                 await _persist_and_send(db, incident, rendered, r_name)
 
@@ -260,9 +281,28 @@ async def send_abuse_reports_async(incident_id: str) -> None:
                 rendered = abuse_service.render_cloudflare(incident, brand, origin_ip)
                 await _persist_and_send(db, incident, rendered, "Cloudflare")
 
-            # Google Safe Browsing — form-only audit log row
-            rendered = abuse_service.render_google_safebrowsing(incident, brand)
-            await _persist_and_send(db, incident, rendered, "Google Safe Browsing")
+            # ---- Audit rows for intel platforms + form-only submissions ----
+            us_audit = abuse_service.render_urlscan_audit(
+                incident, brand,
+                urlscan_result.get("uuid"),
+                urlscan_result.get("public_url"),
+                urlscan_result.get("error"),
+            )
+            await _persist_and_send(db, incident, us_audit, "URLScan.io")
+
+            tf_audit = abuse_service.render_threatfox_audit(
+                incident, brand,
+                threatfox_result.get("uuid"),
+                threatfox_result.get("public_url"),
+                threatfox_result.get("error"),
+            )
+            await _persist_and_send(db, incident, tf_audit, "abuse.ch ThreatFox")
+
+            ms_audit = abuse_service.render_microsoft_smartscreen(incident, brand)
+            await _persist_and_send(db, incident, ms_audit, "Microsoft SmartScreen")
+
+            gsb_audit = abuse_service.render_google_safebrowsing(incident, brand)
+            await _persist_and_send(db, incident, gsb_audit, "Google Safe Browsing")
 
         # Mark incident as REPORTED if we sent at least one report
         result = await db.execute(

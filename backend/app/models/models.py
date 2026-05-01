@@ -88,6 +88,9 @@ class RecipientType(str, enum.Enum):
     REGISTRAR = "registrar"
     GOOGLE_SAFEBROWSING = "google_safebrowsing"
     GOOGLE_DMCA = "google_dmca"
+    URLSCAN = "urlscan"
+    THREATFOX = "threatfox"
+    MICROSOFT_SMARTSCREEN = "microsoft_smartscreen"
 
 class ReportStatus(str, enum.Enum):
     PENDING = "pending"

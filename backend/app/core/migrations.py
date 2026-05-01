@@ -43,6 +43,9 @@ COLUMN_ADDITIONS: List[Tuple[str, str, str]] = [
 # not their .value. So Postgres enum labels are uppercase too.
 ENUM_VALUE_ADDITIONS: List[Tuple[str, str]] = [
     ("recipienttype", "GOOGLE_SAFEBROWSING"),
+    ("recipienttype", "URLSCAN"),
+    ("recipienttype", "THREATFOX"),
+    ("recipienttype", "MICROSOFT_SMARTSCREEN"),
     ("reportstatus", "PENDING"),
     ("reportstatus", "FORM_ONLY"),
     ("reportstatus", "ACTIONED"),
