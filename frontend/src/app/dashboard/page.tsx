@@ -10,24 +10,55 @@ export default function DashboardPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+  
+  // Quick Scan state
+  const [scanUrl, setScanUrl] = useState('');
+  const [scanBrandId, setScanBrandId] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [brandsRes, incidentsRes] = await Promise.all([
-          api.get('/brands/'),
-          api.get('/incidents/')
-        ]);
-        setBrands(brandsRes.data);
-        setIncidents(incidentsRes.data);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      const [brandsRes, incidentsRes] = await Promise.all([
+        api.get('/brands/'),
+        api.get('/incidents/')
+      ]);
+      setBrands(brandsRes.data);
+      setIncidents(incidentsRes.data);
+      if (brandsRes.data.length > 0 && !scanBrandId) {
+        setScanBrandId(brandsRes.data[0].id);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scanUrl || !scanBrandId) return;
+    
+    setIsScanning(true);
+    try {
+      await api.post('/incidents/', {
+        brand_id: scanBrandId,
+        target_url: scanUrl.startsWith('http') ? scanUrl : `http://${scanUrl}`,
+        status: 'NEW',
+        threat_type: 'PHISHING'
+      });
+      setScanUrl('');
+      fetchData();
+      alert('Manual scan triggered successfully!');
+    } catch (error) {
+      alert('Error triggering scan');
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   const getBrandForIncident = (brandId: string) => {
     return brands.find(b => b.id === brandId);
@@ -39,9 +70,34 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white mb-2">Security Overview</h1>
-        <p className="text-gray-400">Monitoring brand impersonation and phishing threats.</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-2">Security Overview</h1>
+          <p className="text-gray-400">Monitoring brand impersonation and phishing threats.</p>
+        </div>
+        
+        {/* Quick Scan Input */}
+        <form onSubmit={handleQuickScan} className="flex flex-col sm:flex-row gap-2 bg-gray-800/50 p-2 rounded-xl border border-gray-700 w-full max-w-xl">
+          <select 
+            className="bg-gray-700 text-white text-xs rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500"
+            value={scanBrandId}
+            onChange={(e) => setScanBrandId(e.target.value)}
+          >
+            {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <input 
+            className="bg-transparent text-white text-sm flex-1 px-2 py-2 outline-none"
+            placeholder="Enter suspicious URL to scan..."
+            value={scanUrl}
+            onChange={(e) => setScanUrl(e.target.value)}
+          />
+          <button 
+            disabled={isScanning}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
+          >
+            {isScanning ? 'Scanning...' : 'Quick Scan'}
+          </button>
+        </form>
       </div>
 
       {/* Stats Grid */}
@@ -82,7 +138,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700/50">
-                {incidents.map((incident) => (
+                {[...incidents].reverse().map((incident) => (
                   <tr key={incident.id} className="hover:bg-gray-700/30 transition-colors group">
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
