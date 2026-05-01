@@ -17,20 +17,22 @@ services:
 
   backend:
     build: ./backend
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-trusyn}
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      IMAP_PASSWORD: ${IMAP_PASSWORD}
     depends_on:
       - db
       - redis
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.trusyn-backend-new.rule=Host(`api.trusyn.io`)"
-      - "traefik.http.routers.trusyn-backend-new.entrypoints=http"
-      - "traefik.http.services.trusyn-backend-new.loadbalancer.server.port=8000"
+      - "traefik.http.routers.trusyn-backend-final.rule=Host(`api.trusyn.io`)"
+      - "traefik.http.routers.trusyn-backend-final.entrypoints=http"
+      - "traefik.http.services.trusyn-backend-final.loadbalancer.server.port=8000"
     restart: unless-stopped
 
   worker:
@@ -57,17 +59,17 @@ services:
 
   frontend:
     build: ./frontend
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: https://api.trusyn.io/api/v1
     depends_on:
       - backend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.trusyn-frontend-new.rule=Host(`trusyn.io`)"
-      - "traefik.http.routers.trusyn-frontend-new.entrypoints=http"
-      - "traefik.http.services.trusyn-frontend-new.loadbalancer.server.port=3000"
+      - "traefik.http.routers.trusyn-frontend-final.rule=Host(`trusyn.io`)"
+      - "traefik.http.routers.trusyn-frontend-final.entrypoints=http"
+      - "traefik.http.services.trusyn-frontend-final.loadbalancer.server.port=3000"
     restart: unless-stopped
 
 volumes:
