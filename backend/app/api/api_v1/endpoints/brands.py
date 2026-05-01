@@ -12,7 +12,7 @@ from app.services.report_service import report_service
 from fastapi.responses import FileResponse
 
 router = APIRouter()
-...
+
 @router.get("/{id}/report")
 async def generate_brand_pdf_report(
     *,

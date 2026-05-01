@@ -4,11 +4,16 @@ import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import { Brand } from '@/types';
 
+type BrandFormState = { name: string; official_domains: string; keywords: string };
+const emptyForm: BrandFormState = { name: '', official_domains: '', keywords: '' };
+
 export default function BrandsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newBrand, setNewBrand] = useState({ name: '', official_domains: '', keywords: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<BrandFormState>(emptyForm);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchBrands();
@@ -25,15 +30,53 @@ export default function BrandsPage() {
     }
   };
 
-  const handleCreateBrand = async (e: React.FormEvent) => {
+  const openCreateModal = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (brand: Brand) => {
+    setEditingId(brand.id);
+    setForm({
+      name: brand.name ?? '',
+      official_domains: brand.official_domains ?? '',
+      keywords: brand.keywords ?? '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
-      await api.post('/brands/', newBrand);
-      setIsModalOpen(false);
-      setNewBrand({ name: '', official_domains: '', keywords: '' });
+      if (editingId) {
+        await api.put(`/brands/${editingId}`, form);
+      } else {
+        await api.post('/brands/', form);
+      }
+      closeModal();
       fetchBrands();
     } catch (err) {
-      alert('Error creating brand');
+      alert(editingId ? 'Error updating brand' : 'Error creating brand');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (brand: Brand) => {
+    if (!confirm(`Delete brand "${brand.name}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/brands/${brand.id}`);
+      fetchBrands();
+    } catch (err) {
+      alert('Error deleting brand');
     }
   };
 
@@ -41,8 +84,8 @@ export default function BrandsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-white">Brand Management</h1>
-        <button 
-          onClick={() => setIsModalOpen(true)}
+        <button
+          onClick={openCreateModal}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition-all"
         >
           + Add New Brand
@@ -62,8 +105,18 @@ export default function BrandsPage() {
               </p>
             </div>
             <div className="mt-4 pt-4 border-t border-gray-700 flex gap-2">
-              <button className="text-xs text-blue-400 hover:text-blue-300 font-bold uppercase">Edit</button>
-              <button className="text-xs text-red-400 hover:text-red-300 font-bold uppercase ml-auto">Delete</button>
+              <button
+                onClick={() => openEditModal(brand)}
+                className="text-xs text-blue-400 hover:text-blue-300 font-bold uppercase"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(brand)}
+                className="text-xs text-red-400 hover:text-red-300 font-bold uppercase ml-auto"
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}
@@ -74,54 +127,56 @@ export default function BrandsPage() {
         )}
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Register New Brand</h2>
-            <form onSubmit={handleCreateBrand} className="space-y-4">
+            <h2 className="text-xl font-bold text-white mb-4">
+              {editingId ? 'Edit Brand' : 'Register New Brand'}
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Brand Name</label>
-                <input 
+                <input
                   required
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500"
-                  value={newBrand.name}
-                  onChange={(e) => setNewBrand({...newBrand, name: e.target.value})}
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g. Trusyn Bank"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Official Domains</label>
-                <input 
+                <input
                   required
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500"
-                  value={newBrand.official_domains}
-                  onChange={(e) => setNewBrand({...newBrand, official_domains: e.target.value})}
+                  value={form.official_domains}
+                  onChange={(e) => setForm({ ...form, official_domains: e.target.value })}
                   placeholder="trusyn.io, trusyn.com"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Keywords (for scanning)</label>
-                <input 
+                <input
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500"
-                  value={newBrand.keywords}
-                  onChange={(e) => setNewBrand({...newBrand, keywords: e.target.value})}
+                  value={form.keywords}
+                  onChange={(e) => setForm({ ...form, keywords: e.target.value })}
                   placeholder="trusyn, login-trusyn, trusyn-verify"
                 />
               </div>
               <div className="flex gap-3 pt-4">
-                <button 
+                <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeModal}
                   className="flex-1 px-4 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 transition-all font-bold"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
-                  className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900 disabled:cursor-not-allowed text-white font-bold transition-all"
                 >
-                  Save Brand
+                  {isSubmitting ? 'Saving...' : editingId ? 'Update Brand' : 'Save Brand'}
                 </button>
               </div>
             </form>
