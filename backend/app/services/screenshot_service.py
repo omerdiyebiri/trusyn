@@ -5,8 +5,11 @@ from typing import Optional, Dict
 import json
 
 class ScreenshotService:
-    def __init__(self, storage_path: str = "storage/screenshots"):
-        self.storage_path = storage_path
+    def __init__(self, storage_path: str = "/app/storage/screenshots"):
+        # Always absolute — same volume is mounted at /app/storage in backend,
+        # worker, and ct_monitor containers. Relative paths would resolve
+        # against the process cwd which can vary (esp. under Celery prefork).
+        self.storage_path = os.path.abspath(storage_path)
         os.makedirs(self.storage_path, exist_ok=True)
 
     async def gather_evidence(self, url: str, incident_id: str) -> Dict[str, Optional[str]]:

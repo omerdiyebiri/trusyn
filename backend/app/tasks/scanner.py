@@ -1,11 +1,17 @@
+import asyncio
+import logging
+
+from sqlalchemy.future import select
+
 from app.core.celery_app import celery_app
-from app.services.whois_service import whois_service
+from app.core.database import AsyncSessionLocal
+from app.models.models import Brand, Incident, IncidentStatus, ThreatType
 from app.services.screenshot_service import screenshot_service
 from app.services.typosquat_service import calculate_similarity
-from app.core.database import AsyncSessionLocal
-from app.models.models import Incident, IncidentStatus, Brand, ThreatType
-import asyncio
-from sqlalchemy.future import select
+from app.services.whois_service import whois_service
+
+
+logger = logging.getLogger(__name__)
 
 async def analyze_incident_async(incident_id: str):
     async with AsyncSessionLocal() as db:

@@ -294,6 +294,16 @@ class AbuseService:
 
     # --- evidence attachments -------------------------------------------------
 
+    @staticmethod
+    def _resolve_storage_path(p: Optional[str]) -> Optional[str]:
+        """Accept absolute paths as-is; resolve legacy relative paths against
+        the canonical /app mount."""
+        if not p:
+            return None
+        if os.path.isabs(p):
+            return p
+        return os.path.join("/app", p)
+
     def _attach_evidence(self, message: EmailMessage,
                          incident: Optional[Incident]) -> List[str]:
         """Attach screenshot.png, WHOIS.txt, and DOM.html (when present) to
@@ -305,9 +315,10 @@ class AbuseService:
         sid = short_id(incident.id)
 
         # Screenshot
-        if incident.screenshot_path and os.path.exists(incident.screenshot_path):
+        screenshot_path = self._resolve_storage_path(incident.screenshot_path)
+        if screenshot_path and os.path.exists(screenshot_path):
             try:
-                with open(incident.screenshot_path, "rb") as fh:
+                with open(screenshot_path, "rb") as fh:
                     data = fh.read()
                 message.add_attachment(
                     data, maintype="image", subtype="png",
@@ -317,10 +328,13 @@ class AbuseService:
             except Exception as exc:
                 logger.warning("Failed to attach screenshot for %s: %s",
                                incident.id, exc)
+        elif incident.screenshot_path:
+            logger.warning("Screenshot path %s not found on disk for %s",
+                           incident.screenshot_path, incident.id)
 
         # DOM snapshot — sibling .html in same dir as screenshot
-        if incident.screenshot_path:
-            dom_path = incident.screenshot_path.replace(".png", ".html")
+        if screenshot_path:
+            dom_path = screenshot_path.replace(".png", ".html")
             if os.path.exists(dom_path):
                 try:
                     with open(dom_path, "rb") as fh:
