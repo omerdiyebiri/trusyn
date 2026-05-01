@@ -9,9 +9,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-trusyn}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
 
   backend:
     build: ./backend
@@ -24,6 +26,12 @@ services:
     depends_on:
       - db
       - redis
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.trusyn-backend.rule=Host(`api.trusyn.io`)
+      - traefik.http.routers.trusyn-backend.entrypoints=http
+      - traefik.http.services.trusyn-backend.loadbalancer.server.port=8000
+    restart: unless-stopped
 
   worker:
     build: ./backend
@@ -35,6 +43,7 @@ services:
     depends_on:
       - db
       - redis
+    restart: unless-stopped
 
   ct_monitor:
     build: ./backend
@@ -44,7 +53,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
-
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -54,6 +63,12 @@ services:
       NEXT_PUBLIC_API_URL: https://api.trusyn.io/api/v1
     depends_on:
       - backend
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.trusyn-frontend.rule=Host(`trusyn.io`)
+      - traefik.http.routers.trusyn-frontend.entrypoints=http
+      - traefik.http.services.trusyn-frontend.loadbalancer.server.port=3000
+    restart: unless-stopped
 
 volumes:
   postgres_data:
