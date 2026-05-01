@@ -15,13 +15,14 @@ Templates rendered here:
 """
 
 import logging
+import os
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.utils import format_datetime, make_msgid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import aiosmtplib
 
@@ -40,6 +41,7 @@ class RenderedReport:
     subject: str
     body: str
     extra_headers: Dict[str, str]
+    attach_evidence: bool = True  # screenshot + WHOIS + DOM as attachments
 
 
 def defang(url: str) -> str:
@@ -59,6 +61,30 @@ def domain_of(url: str) -> str:
         return ""
     rest = url.split("//", 1)[-1]
     return rest.split("/", 1)[0].split("?", 1)[0]
+
+
+def confidence_band(score: Optional[float]) -> str:
+    """Map a confidence_score (0..1) to a categorical label that abuse desks
+    interpret well. Sub-band granularity is hidden because raw scores read
+    as 'auto-tooling output' to humans on the receiving end."""
+    if score is None:
+        return "UNRATED"
+    if score >= 0.85:
+        return "HIGH"
+    if score >= 0.5:
+        return "MEDIUM"
+    return "LOW"
+
+
+def confidence_explanation(threat_type, score: Optional[float]) -> str:
+    """Human-readable rationale paired with the band, suitable for inline
+    inclusion in mail body. Does not expose raw decimal."""
+    band = confidence_band(score)
+    if threat_type and threat_type.value == "typosquatting":
+        return f"{band} (Levenshtein similarity to brand domain: {score:.2f})" if score is not None else band
+    if threat_type and threat_type.value == "phishing":
+        return f"{band} (visual + DOM + brand-asset match)"
+    return f"{band} (brand impersonation indicators)"
 
 
 class AbuseService:
@@ -86,6 +112,8 @@ class AbuseService:
         subject = f"[Trusyn-{short_id(incident.id)}] Phishing on your network: {domain}"
         country_restrictions = (getattr(brand, "country_restrictions", None)
                                 or "Worldwide")
+        confidence = confidence_explanation(incident.threat_type,
+                                            incident.confidence_score)
         body = (
             "Dear Sir or Madam,\n\n"
             f"You are currently hosting a phishing attack on your network at {origin_ip}:\n\n"
@@ -93,13 +121,13 @@ class AbuseService:
             f"This attack impersonates our customer {brand.name} (legitimate site:\n"
             f"{brand.official_domains}). The fraudulent page collects credentials\n"
             "and financial data from victims who arrive via SMS, email or paid ads.\n\n"
+            f"Confidence: {confidence}\n\n"
             "You can verify the content at the origin with:\n\n"
             f"  curl -v -H \"Host: {domain}\" {origin_ip}/\n\n"
-            "Evidence we have collected:\n"
-            "  - Full DOM snapshot\n"
-            f"  - High-resolution screenshot (incident {short_id(incident.id)})\n"
-            "  - WHOIS / RDAP record\n"
-            "  - DNS A / MX / NS records at time of detection\n"
+            "Evidence (attached to this message):\n"
+            f"  - trusyn-evidence-{short_id(incident.id)}.png — full-page screenshot\n"
+            f"  - trusyn-dom-{short_id(incident.id)}.html — DOM snapshot at detection\n"
+            f"  - trusyn-whois-{short_id(incident.id)}.txt — WHOIS / RDAP record\n"
             f"  - Public Trusyn incident: https://trusyn.io/dashboard?incident={incident.id}\n\n"
             "It is possible the attack is geo-restricted; please confirm the page\n"
             "cannot be viewed from these regions before deciding it is resolved:\n"
@@ -130,24 +158,26 @@ class AbuseService:
         domain = domain_of(incident.target_url)
         subject = (f"[Trusyn-{short_id(incident.id)}] DNS Abuse (phishing) — "
                    f"{domain} — RAA §3.18")
+        confidence = confidence_explanation(incident.threat_type,
+                                            incident.confidence_score)
         body = (
             f"To the Abuse Department of {registrar_name},\n\n"
             "This is a formal notice of well-evidenced DNS Abuse at the following\n"
             "domain registered through your services:\n\n"
             f"  Domain:        {domain}\n"
             f"  Phishing URL:  {incident.target_url}\n"
-            f"  Registered:    {created_at or 'see attached WHOIS'}\n\n"
+            f"  Registered:    {created_at or 'see attached WHOIS'}\n"
+            f"  Confidence:    {confidence}\n\n"
             "The domain is being used to conduct a phishing attack impersonating\n"
             f"our customer {brand.name} ({brand.official_domains}). Under the 2024\n"
             "amendments to the ICANN Registrar Accreditation Agreement (Section\n"
             "3.18, effective 5 April 2024), registrars are required to take prompt\n"
             "mitigation action against well-evidenced DNS Abuse, of which phishing\n"
             "is an enumerated category.\n\n"
-            "Evidence:\n"
-            "  - DOM snapshot of the credential-harvesting page\n"
-            f"  - High-resolution screenshot (incident {short_id(incident.id)})\n"
-            f"  - Comparison of the imitated brand assets to {brand.official_domains}\n"
-            "  - WHOIS / RDAP record\n"
+            "Evidence (attached to this message):\n"
+            f"  - trusyn-evidence-{short_id(incident.id)}.png — full-page screenshot\n"
+            f"  - trusyn-dom-{short_id(incident.id)}.html — credential-harvesting DOM\n"
+            f"  - trusyn-whois-{short_id(incident.id)}.txt — WHOIS / RDAP record\n"
             f"  - Hosting origin IP: {origin_ip or 'undisclosed (CF proxy)'}\n"
             f"  - Public Trusyn incident: https://trusyn.io/dashboard?incident={incident.id}\n\n"
             f"Requested action: suspension of {domain} (clientHold or serverHold)\n"
@@ -259,21 +289,83 @@ class AbuseService:
             subject=subject,
             body=body,
             extra_headers=self._common_headers(incident, brand, "phishing"),
+            attach_evidence=False,
         )
+
+    # --- evidence attachments -------------------------------------------------
+
+    def _attach_evidence(self, message: EmailMessage,
+                         incident: Optional[Incident]) -> List[str]:
+        """Attach screenshot.png, WHOIS.txt, and DOM.html (when present) to
+        the outbound message. Returns the list of filenames actually attached
+        for logging."""
+        if not incident:
+            return []
+        attached: List[str] = []
+        sid = short_id(incident.id)
+
+        # Screenshot
+        if incident.screenshot_path and os.path.exists(incident.screenshot_path):
+            try:
+                with open(incident.screenshot_path, "rb") as fh:
+                    data = fh.read()
+                message.add_attachment(
+                    data, maintype="image", subtype="png",
+                    filename=f"trusyn-evidence-{sid}.png",
+                )
+                attached.append(f"screenshot ({len(data)} bytes)")
+            except Exception as exc:
+                logger.warning("Failed to attach screenshot for %s: %s",
+                               incident.id, exc)
+
+        # DOM snapshot — sibling .html in same dir as screenshot
+        if incident.screenshot_path:
+            dom_path = incident.screenshot_path.replace(".png", ".html")
+            if os.path.exists(dom_path):
+                try:
+                    with open(dom_path, "rb") as fh:
+                        data = fh.read()
+                    message.add_attachment(
+                        data, maintype="text", subtype="html",
+                        filename=f"trusyn-dom-{sid}.html",
+                    )
+                    attached.append(f"DOM ({len(data)} bytes)")
+                except Exception as exc:
+                    logger.warning("Failed to attach DOM for %s: %s",
+                                   incident.id, exc)
+
+        # WHOIS as plain-text
+        if incident.whois_raw:
+            try:
+                data = incident.whois_raw.encode("utf-8", errors="replace")
+                message.add_attachment(
+                    data, maintype="text", subtype="plain",
+                    filename=f"trusyn-whois-{sid}.txt",
+                )
+                attached.append(f"WHOIS ({len(data)} bytes)")
+            except Exception as exc:
+                logger.warning("Failed to attach WHOIS for %s: %s",
+                               incident.id, exc)
+
+        return attached
 
     # --- delivery -------------------------------------------------------------
 
-    async def send(self, report: RenderedReport) -> Dict[str, Any]:
+    async def send(self, report: RenderedReport,
+                   incident: Optional[Incident] = None) -> Dict[str, Any]:
         """Dispatch a RenderedReport via SMTP. Returns a dict with status,
         message_id, and error (if any). Form-only recipients (no email) return
-        status='form_only' without sending.
-        """
+        status='form_only' without sending. Attachments (screenshot + WHOIS +
+        DOM) are added for non-form-only recipients when incident is provided
+        and report.attach_evidence is True."""
         if not report.recipient_email:
-            return {"status": "form_only", "message_id": None, "error": None}
+            return {"status": "form_only", "message_id": None, "error": None,
+                    "attachments": []}
 
         if not settings.SMTP_HOST or not settings.SMTP_PASSWORD:
             return {"status": "failed", "message_id": None,
-                    "error": "SMTP_HOST or SMTP_PASSWORD not configured"}
+                    "error": "SMTP_HOST or SMTP_PASSWORD not configured",
+                    "attachments": []}
 
         message = EmailMessage()
         message["From"] = (f"{settings.EMAILS_FROM_NAME} "
@@ -285,6 +377,10 @@ class AbuseService:
             message[k] = v
         message.set_content(report.body)
 
+        attached: List[str] = []
+        if report.attach_evidence and incident is not None:
+            attached = self._attach_evidence(message, incident)
+
         try:
             await aiosmtplib.send(
                 message,
@@ -294,10 +390,13 @@ class AbuseService:
                 password=settings.SMTP_PASSWORD,
                 start_tls=settings.SMTP_TLS,
             )
-            return {"status": "sent", "message_id": message["Message-ID"], "error": None}
+            return {"status": "sent", "message_id": message["Message-ID"],
+                    "error": None, "attachments": attached}
         except Exception as exc:
-            logger.error("SMTP send failed for %s: %s", report.recipient_email, exc)
-            return {"status": "failed", "message_id": message["Message-ID"], "error": str(exc)}
+            logger.error("SMTP send failed for %s: %s",
+                         report.recipient_email, exc)
+            return {"status": "failed", "message_id": message["Message-ID"],
+                    "error": str(exc), "attachments": attached}
 
 
 abuse_service = AbuseService()

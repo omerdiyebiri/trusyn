@@ -131,10 +131,13 @@ async def _persist_and_send(db, incident: Incident,
     if rendered.recipient_email:
         await _wait_for_recipient(rendered.recipient_email)
 
-    result = await abuse_service.send(rendered)
+    result = await abuse_service.send(rendered, incident=incident)
     if result["status"] == "sent":
         report.status = ReportStatus.SENT
         report.message_id = result["message_id"] or report.message_id
+        attached = result.get("attachments") or []
+        if attached:
+            report.error_message = "attachments: " + ", ".join(attached)
     elif result["status"] == "form_only":
         report.status = ReportStatus.FORM_ONLY
     else:

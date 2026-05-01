@@ -259,7 +259,9 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
                                 <div className="mt-1 text-xs text-gray-300 truncate">{r.subject}</div>
                               )}
                               {r.error_message && (
-                                <div className="mt-1 text-xs text-red-400 italic">{r.error_message}</div>
+                                <div className={`mt-1 text-xs italic ${
+                                  r.status === 'failed' ? 'text-red-400' : 'text-gray-500'
+                                }`}>{r.error_message}</div>
                               )}
                             </div>
                             <div className="text-[10px] text-gray-500 whitespace-nowrap text-right">
