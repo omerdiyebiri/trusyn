@@ -38,6 +38,13 @@ class User(Base):
 
     tenant = relationship("Tenant", back_populates="users")
 
+class VekaletStatus(str, enum.Enum):
+    NOT_UPLOADED = "not_uploaded"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 class Brand(Base):
     __tablename__ = "brands"
 
@@ -48,6 +55,16 @@ class Brand(Base):
     keywords = Column(Text)          # JSON or comma-separated
     logo_url = Column(String, nullable=True)
     country_restrictions = Column(Text, default="Worldwide")
+    vekalet_pdf_path = Column(String, nullable=True)
+    # Stored as String, not Enum, to keep idempotent ALTER TABLE simple —
+    # adding a new Postgres enum type to an existing table is harder than
+    # validating allowed values at the app layer (see VekaletStatus enum).
+    vekalet_status = Column(
+        String, default=VekaletStatus.NOT_UPLOADED.value, nullable=False
+    )
+    vekalet_uploaded_at = Column(DateTime, nullable=True)
+    vekalet_reviewed_at = Column(DateTime, nullable=True)
+    vekalet_reject_reason = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     tenant = relationship("Tenant", back_populates="brands")

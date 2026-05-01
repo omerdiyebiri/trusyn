@@ -38,6 +38,7 @@ from app.models.models import (
     Report,
     ReportStatus,
     ThreatType,
+    VekaletStatus,
 )
 from app.services.abuse_service import (
     RenderedReport,
@@ -163,6 +164,36 @@ async def send_abuse_reports_async(incident_id: str) -> None:
             logger.warning("send_abuse_reports: incident %s not found", incident_id)
             return
         brand = incident.brand
+
+        # Vekalet gate — registrars and hosting providers can lawfully reject a
+        # takedown request from a third party that has not produced a power of
+        # attorney from the brand owner. Block dispatch unless an admin has
+        # approved the uploaded document, and persist a PENDING_REVIEW audit
+        # row so the user can see why nothing went out.
+        if (brand.vekalet_status or VekaletStatus.NOT_UPLOADED.value) != \
+                VekaletStatus.APPROVED.value:
+            logger.warning(
+                "send_abuse_reports: brand %s vekalet not approved (status=%s) — skipping",
+                brand.id, brand.vekalet_status,
+            )
+            audit = Report(
+                incident_id=incident.id,
+                recipient_type=RecipientType.HOSTING,
+                recipient_email=None,
+                recipient_name="Trusyn",
+                subject="Awaiting power-of-attorney approval",
+                status=ReportStatus.PENDING_REVIEW,
+                error_message=(
+                    f"Brand vekalet status is "
+                    f"'{brand.vekalet_status or 'not_uploaded'}'. "
+                    "Upload a signed power-of-attorney PDF and wait for admin "
+                    "approval before dispatching abuse reports."
+                ),
+                raw_content="",
+            )
+            db.add(audit)
+            await db.commit()
+            return
 
         whois_data = _parse_whois_blob(incident.whois_raw or "")
         # Run-time fallback: if scanner's whois pass returned nothing or pre-RDAP

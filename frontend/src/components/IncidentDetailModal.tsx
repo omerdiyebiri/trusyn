@@ -205,11 +205,22 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
                   Safe Browsing) from WHOIS / DNS evidence and dispatches templated emails
                   via SMTP. Each report is logged below with status tracking.
                 </p>
+                {brand?.vekalet_status !== 'approved' && (
+                  <div className="mb-4 p-3 rounded border border-yellow-700/40 bg-yellow-900/10 text-yellow-200 text-xs">
+                    <strong className="block mb-1">Power of attorney required.</strong>
+                    Abuse reports cannot be dispatched until an admin approves
+                    the brand’s signed PoA. Current status:{' '}
+                    <span className="font-mono">
+                      {brand?.vekalet_status || 'not_uploaded'}
+                    </span>. Upload a signed PDF on the brand page.
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <button
                     onClick={triggerReports}
-                    disabled={isReporting}
-                    className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all"
+                    disabled={isReporting || brand?.vekalet_status !== 'approved'}
+                    title={brand?.vekalet_status !== 'approved' ? 'Power of attorney must be approved first' : ''}
+                    className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-bold transition-all"
                   >
                     {isReporting ? 'Dispatching...' : 'Send Abuse Reports'}
                   </button>

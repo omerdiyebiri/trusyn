@@ -30,6 +30,11 @@ logger = logging.getLogger(__name__)
 # (table, column, sql-type-with-default)
 COLUMN_ADDITIONS: List[Tuple[str, str, str]] = [
     ("brands", "country_restrictions", "TEXT DEFAULT 'Worldwide'"),
+    ("brands", "vekalet_pdf_path", "VARCHAR"),
+    ("brands", "vekalet_status", "VARCHAR DEFAULT 'not_uploaded'"),
+    ("brands", "vekalet_uploaded_at", "TIMESTAMP"),
+    ("brands", "vekalet_reviewed_at", "TIMESTAMP"),
+    ("brands", "vekalet_reject_reason", "TEXT"),
     ("reports", "recipient_form_url", "VARCHAR"),
     ("reports", "recipient_name", "VARCHAR"),
     ("reports", "subject", "VARCHAR"),

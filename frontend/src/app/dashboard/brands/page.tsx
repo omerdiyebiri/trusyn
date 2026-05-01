@@ -1,8 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '@/services/api';
-import { Brand } from '@/types';
+import { Brand, VekaletStatus } from '@/types';
+
+const VEKALET_BADGE: Record<VekaletStatus, { label: string; cls: string }> = {
+  not_uploaded: { label: 'No PoA on file',  cls: 'bg-gray-700 text-gray-300 border-gray-600' },
+  pending:      { label: 'PoA pending review', cls: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/30' },
+  approved:     { label: 'PoA approved', cls: 'bg-green-500/10 text-green-300 border-green-500/30' },
+  rejected:     { label: 'PoA rejected', cls: 'bg-red-500/10 text-red-300 border-red-500/30' },
+};
 
 type BrandFormState = {
   name: string;
@@ -91,6 +98,27 @@ export default function BrandsPage() {
     }
   };
 
+  const handleVekaletUpload = async (brand: Brand, file: File) => {
+    if (file.type !== 'application/pdf') {
+      alert('Power-of-attorney file must be a PDF.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File exceeds 5 MB limit.');
+      return;
+    }
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      await api.post(`/brands/${brand.id}/vekalet`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      fetchBrands();
+    } catch (err) {
+      alert('Upload failed. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -104,7 +132,10 @@ export default function BrandsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {brands.map((brand) => (
+        {brands.map((brand) => {
+          const vStatus: VekaletStatus = (brand.vekalet_status as VekaletStatus) || 'not_uploaded';
+          const badge = VEKALET_BADGE[vStatus];
+          return (
           <div key={brand.id} className="bg-gray-800 border border-gray-700 rounded-xl p-6 hover:border-gray-500 transition-all">
             <h3 className="text-xl font-bold text-white mb-2">{brand.name}</h3>
             <div className="space-y-2 text-sm">
@@ -115,6 +146,27 @@ export default function BrandsPage() {
                 <span className="text-gray-500 font-medium">Keywords:</span> {brand.keywords}
               </p>
             </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-700">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs uppercase font-bold text-gray-500">
+                  Power of Attorney
+                </span>
+                <span className={`text-[10px] px-2 py-0.5 rounded border uppercase font-bold ${badge.cls}`}>
+                  {badge.label}
+                </span>
+              </div>
+              {vStatus === 'rejected' && brand.vekalet_reject_reason && (
+                <p className="text-xs text-red-300 mb-2 italic">
+                  Reason: {brand.vekalet_reject_reason}
+                </p>
+              )}
+              <p className="text-[11px] text-gray-500 mb-2">
+                Required before abuse reports can be dispatched. Upload signed PDF (max 5 MB).
+              </p>
+              <VekaletUploadInput brand={brand} onUpload={handleVekaletUpload} />
+            </div>
+
             <div className="mt-4 pt-4 border-t border-gray-700 flex gap-2">
               <button
                 onClick={() => openEditModal(brand)}
@@ -130,7 +182,8 @@ export default function BrandsPage() {
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
         {brands.length === 0 && !isLoading && (
           <div className="col-span-full py-20 text-center text-gray-500 bg-gray-800/20 rounded-xl border border-dashed border-gray-700">
             No brands registered. Add your first brand to start monitoring.
@@ -209,5 +262,52 @@ export default function BrandsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+
+function VekaletUploadInput({
+  brand,
+  onUpload,
+}: {
+  brand: Brand;
+  onUpload: (b: Brand, f: File) => Promise<void>;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const trigger = () => ref.current?.click();
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setBusy(true);
+    try {
+      await onUpload(brand, f);
+    } finally {
+      setBusy(false);
+      if (ref.current) ref.current.value = '';
+    }
+  };
+  const label =
+    brand.vekalet_status === 'not_uploaded'
+      ? 'Upload Power of Attorney (PDF)'
+      : 'Replace document';
+  return (
+    <>
+      <input
+        ref={ref}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        onChange={handleChange}
+      />
+      <button
+        type="button"
+        onClick={trigger}
+        disabled={busy}
+        className="w-full text-xs bg-gray-900 hover:bg-gray-700 border border-gray-700 text-gray-200 px-3 py-2 rounded font-bold disabled:opacity-50"
+      >
+        {busy ? 'Uploading…' : label}
+      </button>
+    </>
   );
 }

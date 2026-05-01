@@ -104,3 +104,36 @@ async def public_whois(
     if not incident or not incident.whois_raw:
         raise HTTPException(status_code=404, detail="WHOIS not available")
     return PlainTextResponse(incident.whois_raw)
+
+
+@router.get("/incidents/{id}/vekalet")
+async def public_vekalet(
+    id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Power-of-attorney PDF for the brand referenced by this incident.
+
+    Exposed so registrars / hosts that receive the abuse mail can verify
+    that Trusyn is acting on behalf of an authorized brand owner before
+    taking action. The PDF is served only when the brand vekalet has been
+    admin-approved (status == APPROVED) — otherwise we return 404 to keep
+    the URL pattern stable while reports are blocked anyway.
+    """
+    from fastapi.responses import FileResponse
+    from app.models.models import VekaletStatus
+    result = await db.execute(
+        select(Incident).options(selectinload(Incident.brand)).where(Incident.id == id)
+    )
+    incident = result.scalars().first()
+    if not incident or not incident.brand:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    brand = incident.brand
+    if brand.vekalet_status != VekaletStatus.APPROVED.value:
+        raise HTTPException(status_code=404, detail="Power of attorney not available")
+    if not brand.vekalet_pdf_path or not os.path.exists(brand.vekalet_pdf_path):
+        raise HTTPException(status_code=404, detail="Power of attorney file missing")
+    return FileResponse(
+        brand.vekalet_pdf_path, media_type="application/pdf",
+        filename=f"trusyn-poa-{brand.name.replace(' ', '_')}.pdf",
+    )

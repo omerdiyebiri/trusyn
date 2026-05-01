@@ -23,6 +23,10 @@ class BrandInDBBase(BrandBase):
     id: Optional[UUID] = None
     tenant_id: Optional[UUID] = None
     created_at: Optional[datetime] = None
+    vekalet_status: Optional[str] = None
+    vekalet_uploaded_at: Optional[datetime] = None
+    vekalet_reviewed_at: Optional[datetime] = None
+    vekalet_reject_reason: Optional[str] = None
 
     class Config:
         from_attributes = True

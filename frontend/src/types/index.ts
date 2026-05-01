@@ -15,6 +15,12 @@ export interface Tenant {
   created_at: string;
 }
 
+export type VekaletStatus =
+  | 'not_uploaded'
+  | 'pending'
+  | 'approved'
+  | 'rejected';
+
 export interface Brand {
   id: string;
   name: string;
@@ -22,6 +28,10 @@ export interface Brand {
   keywords?: string;
   logo_url?: string;
   country_restrictions?: string;
+  vekalet_status?: VekaletStatus;
+  vekalet_uploaded_at?: string;
+  vekalet_reviewed_at?: string;
+  vekalet_reject_reason?: string;
   created_at: string;
 }
 
