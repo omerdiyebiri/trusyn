@@ -55,6 +55,7 @@ async def generate_brand_pdf_report(
         media_type='application/pdf'
     )
 
+@router.get("/", response_model=List[BrandSchema])
 async def read_brands(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user),
