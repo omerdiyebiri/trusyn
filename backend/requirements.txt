@@ -16,3 +16,4 @@ beautifulsoup4
 playwright
 python-whois
 aiosmtplib
+certstream
