@@ -7,11 +7,12 @@ load_dotenv()
 celery_app = Celery(
     "worker",
     broker=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-    backend=os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    backend=os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+    include=[
+        "app.tasks.scanner",
+        "app.tasks.reporter",
+        "app.tasks.takedown_tracker",
+    ],
 )
 
-celery_app.conf.task_routes = {
-    "app.tasks.scanner.*": "main-queue",
-}
-
-celery_app.autodiscover_tasks(["app.tasks"])
+celery_app.conf.task_default_queue = "celery"
