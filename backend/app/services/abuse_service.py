@@ -1,9 +1,38 @@
 import json
 from typing import Optional, Dict, Any, List
 from app.models.models import Incident, Brand, RecipientType
+from app.core.config import settings
 import re
+import aiosmtplib
+from email.message import EmailMessage
 
 class AbuseService:
+    async def send_email(self, recipient: str, subject: str, body: str):
+        """Sends an email using the configured SMTP settings."""
+        if not settings.SMTP_HOST:
+            print(f"SMTP not configured. Email to {recipient} NOT sent.")
+            return False
+
+        message = EmailMessage()
+        message["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
+        message["To"] = recipient
+        message["Subject"] = subject
+        message.set_content(body)
+
+        try:
+            await aiosmtplib.send(
+                message,
+                hostname=settings.SMTP_HOST,
+                port=settings.SMTP_PORT,
+                username=settings.SMTP_USER,
+                password=settings.SMTP_PASSWORD,
+                use_tls=settings.SMTP_TLS,
+            )
+            return True
+        except Exception as e:
+            print(f"Email sending error: {e}")
+            return False
+
     def obfuscate_url(self, url: str) -> str:
         """Masks URLs to prevent accidental clicks (e.g., http -> hxxp)."""
         return url.replace("http", "hxxp").replace(".", "[.]")

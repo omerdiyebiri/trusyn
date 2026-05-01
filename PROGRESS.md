@@ -18,11 +18,14 @@
 - **Typosquatting Detection:** Created `typosquat_service` using Levenshtein distance to calculate similarity scores between official domains and suspect URLs.
 - **Automated Scanner Integration:** Integrated similarity scoring and auto-classification into the async analysis pipeline.
 
-## Current Phase: Evidence Gathering
-- [ ] Modernize Playwright screenshot service.
-- [ ] Capture DOM snapshots for analysis.
-- [ ] Fetch DNS records (A, MX, NS) as evidence.
+## Current Phase: Reporting & Analytics
+- [x] Modernize Playwright screenshot service.
+- [x] Capture DOM snapshots for analysis.
+- [x] Fetch DNS records (A, MX, NS) as evidence.
+- [x] W1: Real-time Scanning with CertStream (CT Logs).
+- [x] Automated Abuse Email Sending (SMTP integration).
 
 ## Next Steps
-1. Abuse Email Engine (Template generation based on gathered evidence).
-2. Frontend Dashboard updates to display similarity scores and evidence.
+1. Frontend Dashboard: Brand management and manual scan trigger.
+2. PDF Reporting: Generate weekly/monthly security reports for brand owners.
+3. Advanced Takedown Tracking: Parser for incoming abuse response emails.

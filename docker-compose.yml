@@ -29,12 +29,22 @@ services:
     build: ./backend
     command: celery -A app.core.celery_app worker --loglevel=info
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-trusyn}
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-trusyn}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
       - redis
+
+  ct_monitor:
+    build: ./backend
+    command: python app/tasks/ct_monitor.py
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-trusyn}
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      - db
+
 
   frontend:
     build: ./frontend
