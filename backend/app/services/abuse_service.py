@@ -240,20 +240,26 @@ class AbuseService:
     def render_cloudflare(self, incident: Incident, brand: Brand,
                           origin_ip: Optional[str]) -> RenderedReport:
         domain = domain_of(incident.target_url)
-        subject = (f"[Trusyn-{short_id(incident.id)}] Phishing report "
-                   f"(form duplicate) — {domain}")
+        subject = (f"[Trusyn-{short_id(incident.id)}] Phishing evidence "
+                   f"notification — {domain}")
         body = (
             "Cloudflare Trust & Safety,\n\n"
-            f"This message duplicates Trusyn incident {incident.id}, also filed\n"
-            f"through the Cloudflare abuse form for {domain}.\n\n"
+            f"This is an evidence notification for Trusyn incident {incident.id}.\n"
+            f"The actionable phishing report for {domain} will be filed through\n"
+            "the official Cloudflare abuse form\n"
+            "(https://abuse.cloudflare.com/phishing) by the brand owner or their\n"
+            "operator; this message exists so your team has the supporting\n"
+            "evidence on hand when the form submission lands in your queue.\n\n"
             f"  Reported URL:       {defang(incident.target_url)}\n"
             f"  Origin host IP:     {origin_ip or 'undisclosed'}\n"
             f"  Brand impersonated: {brand.name} ({brand.official_domains})\n"
             f"  Trusyn incident:    https://trusyn.io/incident/{incident.id}\n"
             f"{vekalet_block(incident, brand, indent='  Power of attorney:  ')}"
             "\n"
-            "Evidence: DOM snapshot, screenshot, WHOIS record, DNS records.\n\n"
-            "Submitted via form for action. This email is logged for audit only.\n\n"
+            "Evidence: DOM snapshot, screenshot, WHOIS record, DNS records\n"
+            "are attached and mirrored on the public incident page above.\n\n"
+            "No action is requested from this email alone — please act on the\n"
+            "form submission. This message is for audit and reference only.\n\n"
             "Regards,\n"
             f"Trusyn Brand Protection (on behalf of {brand.name})\n"
             f"{settings.EMAILS_FROM_EMAIL}\n"
