@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from typing import Any, List
@@ -14,6 +15,7 @@ from app.services.report_service import report_service
 from fastapi.responses import FileResponse
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 VEKALET_STORAGE = os.path.abspath("/app/storage/vekalet")
 VEKALET_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
@@ -160,19 +162,31 @@ async def upload_vekalet(
     if not brand:
         raise HTTPException(status_code=404, detail="Brand not found")
 
-    if file.content_type not in ("application/pdf",):
-        raise HTTPException(status_code=400, detail="Only PDF files accepted")
-
+    # We don't gate on file.content_type — Safari, mobile pickers, and some
+    # Windows file dialogs send application/octet-stream or an empty type for
+    # PDFs. The %PDF- magic header below is the authoritative check.
     payload = await file.read()
+    if len(payload) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
     if len(payload) > VEKALET_MAX_BYTES:
         raise HTTPException(status_code=400, detail="File exceeds 5 MB limit")
     if not payload.startswith(b"%PDF-"):
-        raise HTTPException(status_code=400, detail="File is not a valid PDF")
+        logger.warning(
+            "Vekalet upload rejected — not a PDF (brand=%s, content_type=%s, size=%d, head=%s)",
+            brand.id, file.content_type, len(payload), payload[:8],
+        )
+        raise HTTPException(status_code=400,
+                            detail="File is not a valid PDF (must begin with %PDF-)")
 
     filename = f"{brand.id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
     path = os.path.join(VEKALET_STORAGE, filename)
-    with open(path, "wb") as f:
-        f.write(payload)
+    try:
+        with open(path, "wb") as f:
+            f.write(payload)
+    except OSError as exc:
+        logger.error("Vekalet storage write failed at %s: %s", path, exc)
+        raise HTTPException(status_code=500,
+                            detail="Server failed to persist the upload")
 
     brand.vekalet_pdf_path = path
     brand.vekalet_status = VekaletStatus.PENDING.value

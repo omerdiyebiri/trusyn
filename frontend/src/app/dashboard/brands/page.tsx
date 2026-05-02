@@ -99,7 +99,13 @@ export default function BrandsPage() {
   };
 
   const handleVekaletUpload = async (brand: Brand, file: File) => {
-    if (file.type !== 'application/pdf') {
+    // Some browsers/OS pickers report empty or application/octet-stream
+    // for PDFs — treat the .pdf extension as an acceptable fallback.
+    // The backend re-validates via the %PDF- magic header.
+    const looksLikePdf =
+      file.type === 'application/pdf' ||
+      file.name.toLowerCase().endsWith('.pdf');
+    if (!looksLikePdf) {
       alert('Power-of-attorney file must be a PDF.');
       return;
     }
@@ -114,8 +120,9 @@ export default function BrandsPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       fetchBrands();
-    } catch (err) {
-      alert('Upload failed. Please try again.');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      alert(e.response?.data?.detail || 'Upload failed. Please try again.');
     }
   };
 
