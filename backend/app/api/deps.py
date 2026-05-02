@@ -51,8 +51,15 @@ def get_current_active_user(
 def get_current_super_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    if current_user.role != "SUPER_ADMIN":
+    # UserRole is a (str, Enum) subclass — comparing against its .value
+    # ('super_admin') is the canonical check. The previous comparison against
+    # the upper-case NAME silently denied access to every super admin.
+    role_val = (current_user.role.value
+                if hasattr(current_user.role, "value")
+                else str(current_user.role))
+    if role_val != "super_admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="The user doesn't have enough privileges"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user doesn't have enough privileges",
         )
     return current_user

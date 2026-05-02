@@ -1,15 +1,16 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User } from '@/types';
 import api from '@/services/api';
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
-  login: (token: string) => void;
+  login: (token: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,18 +20,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // In a real app, you'd fetch the user profile here
-      // fetchUserProfile(token);
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await api.get('/me');
+      setUser(res.data);
+    } catch {
+      setUser(null);
     }
-    setLoading(false);
   }, []);
 
-  const login = (token: string) => {
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+      refreshUser().finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, [refreshUser]);
+
+  const login = async (token: string) => {
     localStorage.setItem('token', token);
-    // Fetch user and set it
+    await refreshUser();
     router.push('/dashboard');
   };
 
@@ -41,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
