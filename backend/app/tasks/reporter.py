@@ -234,6 +234,13 @@ async def send_abuse_reports_async(incident_id: str) -> None:
         registrar_entry = lookup_registrar(registrar_field)
         if registrar_entry:
             r_name, r_email, r_form, _ = registrar_entry
+            # Form-only registries (e.g. Dynadot, Porkbun, OVH) still publish
+            # an abuse address in WHOIS — fall back to that so the takedown
+            # request actually lands in someone's inbox in addition to the
+            # operator filing the form. Many providers route the form into
+            # the same queue as the email, but redundancy never hurts.
+            if not r_email and registrar_email_from_whois:
+                r_email = registrar_email_from_whois
         else:
             r_name = registrar_field or "the registrar"
             r_email = registrar_email_from_whois
@@ -254,13 +261,27 @@ async def send_abuse_reports_async(incident_id: str) -> None:
                 None, lookup_ip_org, ip_for_lookup
             )
         host_org = ip_org or _first(whois_data.get("org"))
-        if host_org:
+        # If the public-facing IP is Cloudflare's edge, the *real* host is
+        # behind a CF proxy. Sending a "Phishing on your network" mail to
+        # abuse@cloudflare.com is a duplicate of the CF backstop we send
+        # below — and CF rightly ignores duplicates. Suppress the hosting
+        # render in that case; the CF mail covers it.
+        ip_org_lower = (ip_org or "").lower()
+        is_cf_origin = "cloudflare" in ip_org_lower
+        # If IP RDAP lands on Cloudflare even when NS isn't, it's still a CF
+        # property and the CF backstop is the right channel.
+        if is_cf_origin:
+            on_cloudflare = True
+        if host_org and not is_cf_origin:
             hosting_entry = lookup_hosting(host_org)
         if hosting_entry:
             h_name, h_email, h_form, _ = hosting_entry
             # Prefer IP-RDAP-derived abuse email when registry knows it
             if ip_abuse:
                 h_email = ip_abuse
+        elif is_cf_origin:
+            # Hosting channel intentionally suppressed; CF backstop handles it.
+            h_name, h_email, h_form = "Cloudflare", None, None
         else:
             h_name = host_org or "the hosting provider"
             h_email = ip_abuse or (
