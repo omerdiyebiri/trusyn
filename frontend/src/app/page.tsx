@@ -1,53 +1,20 @@
 import Link from "next/link";
+import { SiteFooter, SiteNav } from "@/components/landing/SiteChrome";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <Nav />
-      <Hero />
-      <Stats />
-      <Pipeline />
-      <Channels />
-      <Compliance />
-      <CTA />
-      <Footer />
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
+      <SiteNav />
+      <main className="flex-1">
+        <Hero />
+        <Stats />
+        <Pipeline />
+        <Channels />
+        <Compliance />
+        <CTA />
+      </main>
+      <SiteFooter />
     </div>
-  );
-}
-
-function Nav() {
-  return (
-    <nav className="sticky top-0 z-40 backdrop-blur bg-gray-950/80 border-b border-gray-800">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.8)]" />
-          <span className="font-bold tracking-tight">Trusyn</span>
-          <span className="text-gray-500 text-xs uppercase tracking-widest hidden sm:inline">
-            Brand Protection
-          </span>
-        </Link>
-        <div className="flex items-center gap-3 text-sm">
-          <a
-            href="#how-it-works"
-            className="text-gray-400 hover:text-white transition-colors hidden sm:inline"
-          >
-            How it works
-          </a>
-          <a
-            href="#channels"
-            className="text-gray-400 hover:text-white transition-colors hidden sm:inline"
-          >
-            Channels
-          </a>
-          <Link
-            href="/login"
-            className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-1.5 rounded-md transition-colors"
-          >
-            Sign in
-          </Link>
-        </div>
-      </div>
-    </nav>
   );
 }
 
@@ -308,27 +275,3 @@ function CTA() {
   );
 }
 
-function Footer() {
-  return (
-    <footer className="border-t border-gray-800 bg-gray-950">
-      <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row gap-4 justify-between text-xs text-gray-500">
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-          <span className="font-bold text-gray-300">Trusyn</span>
-          <span>· Brand Protection · trusyn.io</span>
-        </div>
-        <div className="flex gap-4">
-          <a
-            href="mailto:takedowns@trusyn.io"
-            className="hover:text-gray-300"
-          >
-            takedowns@trusyn.io
-          </a>
-          <Link href="/login" className="hover:text-gray-300">
-            Sign in
-          </Link>
-        </div>
-      </div>
-    </footer>
-  );
-}
