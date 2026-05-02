@@ -40,24 +40,30 @@ async def init_tables():
             logger.info("Database tables created successfully.")
             await run_idempotent_migrations(engine)
             
-            # Create a test admin user if none exists
+            # Bootstrap the platform owner. admin@trusyn.io is the operator
+            # super-admin: created if missing, promoted to SUPER_ADMIN on every
+            # boot so accidental role changes self-heal on the next deploy.
             async with AsyncSessionLocal() as db:
                 result = await db.execute(select(User).where(User.email == "admin@trusyn.io"))
                 admin = result.scalars().first()
                 if not admin:
-                    new_tenant = Tenant(name="Default Tenant")
+                    new_tenant = Tenant(name="Trusyn Operations")
                     db.add(new_tenant)
                     await db.flush()
-                    
                     new_user = User(
                         email="admin@trusyn.io",
                         password_hash=security.get_password_hash("password123"),
                         tenant_id=new_tenant.id,
-                        role=UserRole.TENANT_ADMIN
+                        role=UserRole.SUPER_ADMIN,
                     )
                     db.add(new_user)
                     await db.commit()
-                    logger.info("Test admin user created: admin@trusyn.io / password123")
+                    logger.info("Bootstrapped owner account: admin@trusyn.io (SUPER_ADMIN)")
+                elif admin.role != UserRole.SUPER_ADMIN:
+                    admin.role = UserRole.SUPER_ADMIN
+                    db.add(admin)
+                    await db.commit()
+                    logger.info("Promoted admin@trusyn.io to SUPER_ADMIN")
             break
         except Exception as e:
             logger.error(f"Error during startup: {e}", exc_info=True)
