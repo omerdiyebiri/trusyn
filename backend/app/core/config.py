@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     URLSCAN_API_KEY: Optional[str] = None
     ABUSE_CH_AUTH_KEY: Optional[str] = None  # used by ThreatFox / URLhaus
     URLSCAN_VISIBILITY: str = "public"  # public | unlisted | private
+    # Google PageSpeed Insights — used as a screenshot fallback when our
+    # Playwright probe lands on a Cloudflare challenge page. Optional;
+    # works without a key at low rate (~25 req/day shared pool).
+    GOOGLE_PAGESPEED_API_KEY: Optional[str] = None
 
     model_config = SettingsConfigDict(
         case_sensitive=True,

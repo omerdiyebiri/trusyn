@@ -35,6 +35,7 @@ services:
       IMAP_PASSWORD: ${IMAP_PASSWORD}
       URLSCAN_API_KEY: ${URLSCAN_API_KEY}
       ABUSE_CH_AUTH_KEY: ${ABUSE_CH_AUTH_KEY}
+      GOOGLE_PAGESPEED_API_KEY: ${GOOGLE_PAGESPEED_API_KEY}
     volumes:
       - evidence_data:/app/storage
     depends_on:
@@ -55,6 +56,7 @@ services:
       IMAP_PASSWORD: ${IMAP_PASSWORD}
       URLSCAN_API_KEY: ${URLSCAN_API_KEY}
       ABUSE_CH_AUTH_KEY: ${ABUSE_CH_AUTH_KEY}
+      GOOGLE_PAGESPEED_API_KEY: ${GOOGLE_PAGESPEED_API_KEY}
     volumes:
       - evidence_data:/app/storage
     depends_on:

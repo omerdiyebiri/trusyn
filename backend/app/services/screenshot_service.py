@@ -1,8 +1,18 @@
 from playwright.async_api import async_playwright
+import logging
 import os
 from datetime import datetime
 from typing import Optional, Dict
 import json
+
+from app.services.screenshot_fallback_service import (
+    attempt_fallback,
+    is_block_page,
+)
+
+
+logger = logging.getLogger(__name__)
+
 
 class ScreenshotService:
     def __init__(self, storage_path: str = "/app/storage/screenshots"):
@@ -20,7 +30,8 @@ class ScreenshotService:
             "screenshot_path": None,
             "dom_path": None,
             "page_title": None,
-            "status_code": None
+            "status_code": None,
+            "screenshot_source": "playwright",
         }
         
         try:
@@ -101,11 +112,30 @@ class ScreenshotService:
                 with open(dom_path, "w", encoding="utf-8") as f:
                     f.write(dom_content)
                 evidence["dom_path"] = dom_path
-                
+
                 await browser.close()
+
+                # 4. If the captured page is a Cloudflare block, try the
+                # fallback cascade (URLScan → PageSpeed Insights). They
+                # render from different networks so CF rules tuned to drop
+                # our IP often let them through. The fallback overwrites
+                # the same file so downstream attachment / public-page
+                # logic doesn't change.
+                if is_block_page(dom_content, evidence.get("page_title") or ""):
+                    logger.info("Block-page detected for %s; attempting "
+                                "screenshot fallback", url)
+                    fallback_path = await attempt_fallback(url, screenshot_path)
+                    if fallback_path:
+                        evidence["screenshot_source"] = "fallback"
+                        logger.info("Fallback screenshot succeeded for %s", url)
+                    else:
+                        evidence["screenshot_source"] = "playwright_blocked"
+                        logger.warning("All screenshot fallbacks failed "
+                                       "for %s — block page persisted", url)
+
                 return evidence
         except Exception as e:
-            print(f"Evidence gathering error for {url}: {e}")
+            logger.error("Evidence gathering error for %s: %s", url, e)
             return evidence
 
     # Backward compatibility
