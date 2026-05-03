@@ -36,6 +36,10 @@ services:
       URLSCAN_API_KEY: ${URLSCAN_API_KEY}
       ABUSE_CH_AUTH_KEY: ${ABUSE_CH_AUTH_KEY}
       GOOGLE_PAGESPEED_API_KEY: ${GOOGLE_PAGESPEED_API_KEY}
+      CF_API_EMAIL: ${CF_API_EMAIL}
+      CF_API_KEY: ${CF_API_KEY}
+      CF_API_TOKEN: ${CF_API_TOKEN}
+      CF_ACCOUNT_ID: ${CF_ACCOUNT_ID}
     volumes:
       - evidence_data:/app/storage
     depends_on:
@@ -57,6 +61,10 @@ services:
       URLSCAN_API_KEY: ${URLSCAN_API_KEY}
       ABUSE_CH_AUTH_KEY: ${ABUSE_CH_AUTH_KEY}
       GOOGLE_PAGESPEED_API_KEY: ${GOOGLE_PAGESPEED_API_KEY}
+      CF_API_EMAIL: ${CF_API_EMAIL}
+      CF_API_KEY: ${CF_API_KEY}
+      CF_API_TOKEN: ${CF_API_TOKEN}
+      CF_ACCOUNT_ID: ${CF_ACCOUNT_ID}
     volumes:
       - evidence_data:/app/storage
     depends_on:

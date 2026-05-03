@@ -44,6 +44,11 @@ from app.services.abuse_service import (
     RenderedReport,
     abuse_service,
 )
+from app.services.cloudflare_abuse_service import (
+    is_configured as cf_is_configured,
+    submit_phishing_report as cf_submit_phishing_report,
+    url_scanner_scan as cf_url_scanner_scan,
+)
 from app.services.intel_service import (
     submit_threatfox,
     submit_urlscan,
@@ -92,6 +97,63 @@ def _first(value):
     if isinstance(value, (list, tuple)):
         return value[0] if value else None
     return str(value)
+
+
+def _build_cf_justification(
+    incident: Incident,
+    brand,
+    intel_links: dict,
+    origin_ip: Optional[str],
+    cf_scan_uuid: Optional[str],
+) -> str:
+    """Build the `comments` field for a CF abuse report. Pack everything
+    CF's auto-resolve classifier reads — citations to URLScan/ThreatFox,
+    CF's own URL Scanner UUID, brand authority, origin IP, evidence
+    pointers — in <5000 chars."""
+    band = ("HIGH" if (incident.confidence_score or 0) >= 0.85
+            else "MEDIUM" if (incident.confidence_score or 0) >= 0.5
+            else "LOW")
+    lines = [
+        f"Phishing site impersonating brand: {brand.name}.",
+        f"Legitimate site: {brand.official_domains or 'N/A'}.",
+        f"Detection confidence: {band} "
+        f"({(incident.confidence_score or 0):.2f}).",
+        "",
+        "Trusyn pipeline observations:",
+        f"  - Threat type: {(incident.threat_type.value if incident.threat_type else 'phishing')}",
+        f"  - Reported URL: {incident.target_url}",
+        f"  - Origin host IP (if disclosed): {origin_ip or 'undisclosed (CF proxy)'}",
+        f"  - Public Trusyn incident page: https://trusyn.io/incident/{incident.id}",
+    ]
+    if cf_scan_uuid:
+        lines.append(
+            f"  - Cloudflare URL Scanner pre-flight: "
+            f"https://radar.cloudflare.com/scan/{cf_scan_uuid}"
+        )
+    if intel_links.get("urlscan"):
+        lines.append(f"  - URLScan.io public scan: {intel_links['urlscan']}")
+    if intel_links.get("threatfox"):
+        lines.append(
+            f"  - abuse.ch ThreatFox IOC: {intel_links['threatfox']}"
+        )
+    lines += [
+        "",
+        "Evidence captured:",
+        "  - Full-page screenshot (mobile viewport, Turkish locale)",
+        "  - DOM snapshot at detection",
+        "  - WHOIS / RDAP record for the domain",
+        "",
+        "Requested action: take down the phishing content and disclose the",
+        "origin host IP under the Cloudflare Trusted Reporter / abuse",
+        "process so we can escalate to the upstream provider.",
+    ]
+    if getattr(brand, "vekalet_status", None) == "approved":
+        lines += [
+            "",
+            "Power of attorney from the rights holder is on file at:",
+            f"  https://api.trusyn.io/api/v1/public/incidents/{incident.id}/vekalet",
+        ]
+    return "\n".join(lines)[:5000]
 
 
 async def _wait_for_recipient(recipient_email: str) -> None:
@@ -338,8 +400,41 @@ async def send_abuse_reports_async(incident_id: str) -> None:
                 await _persist_and_send(db, incident, rendered, r_name)
 
             if on_cloudflare:
-                rendered = abuse_service.render_cloudflare(incident, brand, origin_ip)
-                await _persist_and_send(db, incident, rendered, "Cloudflare")
+                # Primary path: CF Abuse Reports API. Bypasses Turnstile,
+                # feeds the same triage pipeline as the form. Email to
+                # abuse@cloudflare.com is decorative; CF documents that
+                # they auto-bounce email submissions back to the form.
+                if cf_is_configured():
+                    # Pre-scan via CF URL Scanner so by the time the report
+                    # lands, CF's own scanner has classified the URL.
+                    cf_scan = await asyncio.get_event_loop().run_in_executor(
+                        None, cf_url_scanner_scan, incident.target_url,
+                    )
+                    cf_result = await asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda: cf_submit_phishing_report(
+                            target_urls=[incident.target_url],
+                            brand_name=brand.name or "the customer brand",
+                            justification=_build_cf_justification(
+                                incident, brand, intel_links, origin_ip,
+                                cf_scan.get("uuid"),
+                            ),
+                        ),
+                    )
+                    cf_audit = abuse_service.render_cloudflare_api_audit(
+                        incident, brand,
+                        cf_result.get("report_id"),
+                        cf_result.get("status"),
+                        cf_result.get("error"),
+                        cf_scan.get("uuid"),
+                    )
+                    await _persist_and_send(db, incident, cf_audit, "Cloudflare")
+                else:
+                    # No CF API creds — fall back to legacy email backstop
+                    # (best-effort; CF treats email as decorative).
+                    rendered = abuse_service.render_cloudflare(
+                        incident, brand, origin_ip)
+                    await _persist_and_send(db, incident, rendered, "Cloudflare")
 
             # ---- Audit rows for intel platforms + form-only submissions ----
             us_audit = abuse_service.render_urlscan_audit(

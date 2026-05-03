@@ -33,6 +33,17 @@ class Settings(BaseSettings):
     # works without a key at low rate (~25 req/day shared pool).
     GOOGLE_PAGESPEED_API_KEY: Optional[str] = None
 
+    # Cloudflare Abuse Reports API — primary takedown channel for
+    # CF-fronted phishing. Submitting via API uses the same triage
+    # pipeline as the web form but skips Turnstile (Bearer auth).
+    # Email to abuse@cloudflare.com is documented as decorative; CF
+    # auto-bounces it back to the form. We keep the audit Report row
+    # but the actual dispatch goes through these endpoints.
+    CF_API_EMAIL: Optional[str] = None
+    CF_API_KEY: Optional[str] = None  # Global API Key (legacy auth)
+    CF_API_TOKEN: Optional[str] = None  # Modern Bearer token
+    CF_ACCOUNT_ID: Optional[str] = None
+
     model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file=".env",

@@ -273,6 +273,43 @@ class AbuseService:
             extra_headers=self._common_headers(incident, brand, "phishing"),
         )
 
+    def render_cloudflare_api_audit(self, incident: Incident, brand: Brand,
+                                    report_id: Optional[str],
+                                    submit_status: Optional[str],
+                                    error: Optional[str],
+                                    scan_uuid: Optional[str]) -> RenderedReport:
+        """Audit-only row for the Cloudflare Abuse Reports API submission.
+        We don't email Cloudflare anymore — this row records the API
+        outcome so it's visible alongside the other dispatches in the UI."""
+        domain = domain_of(incident.target_url)
+        subject = (f"[Trusyn-{short_id(incident.id)}] CF API submission — "
+                   f"{domain}")
+        body = (
+            "Audit log of Cloudflare Abuse Reports API submission.\n\n"
+            f"Target URL:        {incident.target_url}\n"
+            f"Brand:             {brand.name}\n"
+            f"Submission status: {submit_status or 'unknown'}\n"
+            f"CF report ID:      {report_id or '—'}\n"
+            f"CF URL Scanner:    {scan_uuid or '—'}\n"
+            f"Error (if any):    {error or '—'}\n\n"
+            "Cloudflare's documented position is that abuse@cloudflare.com\n"
+            "email is decorative and submissions must go via the form or\n"
+            "API. We submit through the Abuse Reports API (Bearer auth, no\n"
+            "Turnstile). Pre-flight URL Scanner submission helps the\n"
+            "abuse report auto-resolve when CF's own scanner classifies\n"
+            "the URL as phishing before the report is processed.\n"
+        )
+        return RenderedReport(
+            recipient_type=RecipientType.CLOUDFLARE,
+            recipient_email=None,  # API channel, no email
+            recipient_form_url=("https://abuse.cloudflare.com/phishing"
+                                if not report_id else None),
+            subject=subject,
+            body=body,
+            extra_headers=self._common_headers(incident, brand, "phishing"),
+            attach_evidence=False,
+        )
+
     def render_typosquat(self, incident: Incident, brand: Brand,
                          registrar_name: str, registrar_email: Optional[str],
                          registrar_form_url: Optional[str],
