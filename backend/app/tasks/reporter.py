@@ -404,9 +404,8 @@ async def send_abuse_reports_async(incident_id: str) -> None:
                 # feeds the same triage pipeline as the form. Email to
                 # abuse@cloudflare.com is decorative; CF documents that
                 # they auto-bounce email submissions back to the form.
+                cf_api_succeeded = False
                 if cf_is_configured():
-                    # Pre-scan via CF URL Scanner so by the time the report
-                    # lands, CF's own scanner has classified the URL.
                     cf_scan = await asyncio.get_event_loop().run_in_executor(
                         None, cf_url_scanner_scan, incident.target_url,
                     )
@@ -429,9 +428,13 @@ async def send_abuse_reports_async(incident_id: str) -> None:
                         cf_scan.get("uuid"),
                     )
                     await _persist_and_send(db, incident, cf_audit, "Cloudflare")
-                else:
-                    # No CF API creds — fall back to legacy email backstop
-                    # (best-effort; CF treats email as decorative).
+                    cf_api_succeeded = cf_result.get("status") == "submitted"
+
+                # Email backstop: send when API call wasn't attempted (no
+                # creds) OR when it failed (so we don't leave CF empty-
+                # handed while the API access issue is being resolved).
+                # CF treats this as decorative but it's better than nothing.
+                if not cf_api_succeeded:
                     rendered = abuse_service.render_cloudflare(
                         incident, brand, origin_ip)
                     await _persist_and_send(db, incident, rendered, "Cloudflare")
