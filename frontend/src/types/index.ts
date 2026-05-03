@@ -45,6 +45,8 @@ export type IncidentStatus =
 
 export type ThreatType = 'phishing' | 'brand_impersonation' | 'typosquatting';
 
+export type ScreenshotSource = 'playwright' | 'fallback' | 'playwright_blocked';
+
 export interface Incident {
   id: string;
   brand_id: string;
@@ -53,6 +55,7 @@ export interface Incident {
   threat_type?: ThreatType;
   confidence_score?: number;
   screenshot_path?: string;
+  screenshot_source?: ScreenshotSource | string;
   whois_raw?: string;
   discovered_at: string;
 }

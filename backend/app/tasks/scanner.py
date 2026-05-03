@@ -56,6 +56,8 @@ async def analyze_incident_async(incident_id: str):
             evidence = await screenshot_service.gather_evidence(incident.target_url, str(incident.id))
             if evidence["screenshot_path"]:
                 incident.screenshot_path = evidence["screenshot_path"]
+            if evidence.get("screenshot_source"):
+                incident.screenshot_source = evidence["screenshot_source"]
             
             # Log additional evidence for now (can be moved to DB columns later)
             if evidence["page_title"]:

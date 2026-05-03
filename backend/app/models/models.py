@@ -93,6 +93,11 @@ class Incident(Base):
     threat_type = Column(Enum(ThreatType))
     confidence_score = Column(Float, default=0.0)
     screenshot_path = Column(String, nullable=True)
+    # 'playwright' (primary), 'fallback' (URLScan / PageSpeed cascade
+    # succeeded), 'playwright_blocked' (we only have the CF block page),
+    # null when no screenshot was attempted. Surfaced in the panel so
+    # operators can see at a glance which evidence is real.
+    screenshot_source = Column(String, nullable=True)
     whois_raw = Column(Text, nullable=True)
     discovered_at = Column(DateTime, default=datetime.utcnow)
 

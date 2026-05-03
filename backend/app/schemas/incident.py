@@ -24,6 +24,7 @@ class IncidentInDBBase(IncidentBase):
     id: Optional[UUID] = None
     brand_id: Optional[UUID] = None
     screenshot_path: Optional[str] = None
+    screenshot_source: Optional[str] = None
     discovered_at: Optional[datetime] = None
 
     class Config:

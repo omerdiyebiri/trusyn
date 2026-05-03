@@ -183,17 +183,7 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
           )}
 
           {activeTab === 'evidence' && (
-            <div className="space-y-4 text-center">
-              {incident.screenshot_path ? (
-                <div className="border border-gray-700 rounded-lg overflow-hidden bg-gray-800 py-12 text-gray-400">
-                  <svg className="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  Screenshot captured at:<br/>
-                  <code className="text-xs">{incident.screenshot_path}</code>
-                </div>
-              ) : (
-                <div className="py-12 text-gray-500 italic">No screenshot captured yet.</div>
-              )}
-            </div>
+            <EvidenceTab incident={incident} onUpdated={onUpdated} />
           )}
 
           {activeTab === 'abuse' && (
@@ -317,6 +307,100 @@ export default function IncidentDetailModal({ incident, brand, onClose, onUpdate
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+const API_BASE_FOR_IMG =
+  process.env.NEXT_PUBLIC_API_URL || 'https://api.trusyn.io/api/v1';
+
+function EvidenceTab({
+  incident,
+  onUpdated,
+}: {
+  incident: Incident;
+  onUpdated?: () => void;
+}) {
+  const [refetching, setRefetching] = useState(false);
+  const src = incident.screenshot_source;
+  const isBlocked = src === 'playwright_blocked';
+  const isFallback = src === 'fallback';
+
+  const refetch = async () => {
+    if (!confirm('Re-fetch the screenshot via URLScan / PageSpeed cascade?\n\nUseful when Playwright landed on a Cloudflare block page. Takes ~30-60 seconds; refresh after.')) return;
+    setRefetching(true);
+    try {
+      await api.post(`/incidents/${incident.id}/refetch-screenshot`);
+      alert('Fallback screenshot retry started. Refresh in ~60 seconds to see the new image.');
+      onUpdated?.();
+    } catch {
+      alert('Retry failed.');
+    } finally {
+      setRefetching(false);
+    }
+  };
+
+  const imgUrl = `${API_BASE_FOR_IMG}/public/incidents/${incident.id}/screenshot`;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        {isBlocked && (
+          <span className="text-[10px] uppercase font-bold bg-red-500/10 text-red-300 border border-red-500/40 px-2 py-1 rounded">
+            Cloudflare block captured
+          </span>
+        )}
+        {isFallback && (
+          <span className="text-[10px] uppercase font-bold bg-blue-500/10 text-blue-300 border border-blue-500/40 px-2 py-1 rounded">
+            Sourced via fallback (URLScan / PageSpeed)
+          </span>
+        )}
+        {src === 'playwright' && (
+          <span className="text-[10px] uppercase font-bold bg-green-500/10 text-green-300 border border-green-500/40 px-2 py-1 rounded">
+            Playwright direct capture
+          </span>
+        )}
+        <button
+          onClick={refetch}
+          disabled={refetching}
+          className="ml-auto text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white px-3 py-1.5 rounded font-bold"
+          title="Run URLScan + PageSpeed fallback against this URL and overwrite the screenshot. Useful when CF blocked our scanner."
+        >
+          {refetching ? 'Retrying…' : 'Re-fetch via fallback'}
+        </button>
+      </div>
+
+      {incident.screenshot_path ? (
+        <a
+          href={imgUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block border border-gray-700 rounded-lg overflow-hidden bg-gray-800 hover:border-blue-500/40 transition-colors"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imgUrl}
+            alt={`Screenshot for ${incident.target_url}`}
+            className="w-full h-auto"
+            loading="lazy"
+          />
+        </a>
+      ) : (
+        <div className="py-12 text-gray-500 italic text-center">
+          No screenshot captured yet.
+        </div>
+      )}
+
+      {isBlocked && (
+        <div className="text-xs text-yellow-300 bg-yellow-900/10 border border-yellow-700/40 rounded p-3">
+          The captured page is a Cloudflare block — our Playwright scan was
+          rejected. Click <strong>Re-fetch via fallback</strong> above to try
+          URLScan&apos;s capture (different network) and Google PageSpeed
+          Insights. If both also fail, the target likely enforces an
+          IP-level fence and a Turkish residential proxy is required.
+        </div>
+      )}
     </div>
   );
 }

@@ -86,7 +86,7 @@ def vekalet_block(incident: Incident, brand: Brand, indent: str = "  - ") -> str
         return ""
     return (
         f"{indent}Power of attorney from {brand.name}: "
-        f"https://trusyn.io/api/v1/public/incidents/{incident.id}/vekalet\n"
+        f"https://api.trusyn.io/api/v1/public/incidents/{incident.id}/vekalet\n"
     )
 
 

@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 # (table, column, sql-type-with-default)
 COLUMN_ADDITIONS: List[Tuple[str, str, str]] = [
+    ("incidents", "screenshot_source", "VARCHAR"),
     ("brands", "country_restrictions", "TEXT DEFAULT 'Worldwide'"),
     ("brands", "vekalet_pdf_path", "VARCHAR"),
     ("brands", "vekalet_status", "VARCHAR DEFAULT 'not_uploaded'"),

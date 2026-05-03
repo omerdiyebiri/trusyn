@@ -55,6 +55,7 @@ from app.services.origin_ip_service import (
     resolve_a_records,
 )
 from app.services.provider_registry import (
+    derive_registrar_abuse_email,
     fallback_abuse_email,
     lookup_hosting,
     lookup_registrar,
@@ -245,6 +246,13 @@ async def send_abuse_reports_async(incident_id: str) -> None:
             r_name = registrar_field or "the registrar"
             r_email = registrar_email_from_whois
             r_form = None
+            # Modern registrars often redact contact info in RDAP. When the
+            # registry has no entry AND WHOIS gave us nothing, derive an
+            # abuse@<registrar-domain> guess so dispatch isn't silently
+            # skipped (covers e.g. Spaceship before it was added to the
+            # registry).
+            if not r_email and registrar_field:
+                r_email = derive_registrar_abuse_email(registrar_field)
 
         # ---- Resolve hosting abuse channel ----
         # Prefer IP RDAP lookup (gives the actual hosting org/AS), fall back to

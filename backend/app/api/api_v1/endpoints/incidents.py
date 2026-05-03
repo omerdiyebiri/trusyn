@@ -99,6 +99,52 @@ async def reanalyze_incident(
     asyncio.create_task(analyze_incident_async(str(incident.id)))
     return {"message": "Re-analysis started in background"}
 
+
+@router.post("/{id}/refetch-screenshot")
+async def refetch_screenshot(
+    *,
+    db: AsyncSession = Depends(get_db),
+    id: str,
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    """Run only the URLScan / PageSpeed fallback cascade against the
+    incident's target URL and overwrite the stored screenshot. Useful
+    when Playwright landed on a CF block page and the operator wants to
+    try the external-network screenshot without re-running the whole
+    evidence pipeline."""
+    from app.services.screenshot_fallback_service import attempt_fallback
+    result = await db.execute(
+        select(Incident)
+        .join(Brand)
+        .where(Incident.id == id, Brand.tenant_id == current_user.tenant_id)
+    )
+    incident = result.scalars().first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    if not incident.screenshot_path:
+        raise HTTPException(status_code=400,
+                            detail="Incident has no screenshot path to overwrite")
+
+    target_url = incident.target_url
+    screenshot_path = incident.screenshot_path
+    incident_id = str(incident.id)
+
+    async def _worker():
+        from app.core.database import AsyncSessionLocal as ASL
+        new_path = await attempt_fallback(target_url, screenshot_path)
+        if new_path:
+            async with ASL() as db2:
+                row = (await db2.execute(
+                    select(Incident).where(Incident.id == incident_id)
+                )).scalars().first()
+                if row:
+                    row.screenshot_source = "fallback"
+                    db2.add(row)
+                    await db2.commit()
+
+    asyncio.create_task(_worker())
+    return {"message": "Fallback screenshot retry started"}
+
 @router.get("/{id}/reports", response_model=List[ReportSchema])
 async def list_incident_reports(
     *,

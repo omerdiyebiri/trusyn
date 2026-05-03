@@ -40,6 +40,65 @@ REGISTRARS: Dict[str, ProviderEntry] = {
     "ovh": ("OVH", None, "https://www.ovh.com/abuse", True),
     "cloudflare": ("Cloudflare Registrar", "abuse@cloudflare.com",
                    "https://abuse.cloudflare.com/phishing", True),
+    "spaceship": ("Spaceship", "abuse@spaceship.com", None, False),
+    "internetbs": ("Internet.bs", "abuse@internet.bs", None, False),
+    "internet.bs": ("Internet.bs", "abuse@internet.bs", None, False),
+    "name.com": ("Name.com", "abuse@name.com", None, False),
+    "register.com": ("Register.com", "abuse@web.com", None, False),
+    "1api": ("1API / Hexonet", "abuse@1api.net", None, False),
+    "hexonet": ("Hexonet", "abuse@1api.net", None, False),
+    "ascio": ("Ascio", "abuse@ascio.com", None, False),
+    "key-systems": ("Key-Systems / CentralNic", "abuse@key-systems.net", None, False),
+    "centralnic": ("CentralNic", "abuse@centralnic.com", None, False),
+    "regru": ("Reg.ru", "abuse@reg.ru", None, False),
+    "reg.ru": ("Reg.ru", "abuse@reg.ru", None, False),
+    "wild west": ("Wild West Domains (GoDaddy)", "abuse@wildwestdomains.com", None, False),
+    "publicdomainregistry": ("PublicDomainRegistry / Endurance",
+                             "abuse@publicdomainregistry.com", None, False),
+    "directi": ("Directi / PublicDomainRegistry",
+                "abuse@publicdomainregistry.com", None, False),
+    "epik": ("Epik", "abuse@epik.com", None, False),
+    "alibaba": ("Alibaba Cloud Computing", "DomainAbuse@service.aliyun.com", None, False),
+    "xin net": ("Xin Net Technology", "supervision@xinnet.com", None, False),
+    "todaynic": ("Todaynic.com", "abuse@todaynic.com", None, False),
+    "namebright": ("NameBright (DropCatch)", "abuse@namebright.com", None, False),
+    "fastdomain": ("FastDomain (Newfold)", "abuse@web.com", None, False),
+    "domain.com": ("Domain.com (Newfold)", "abuse@web.com", None, False),
+    "register.it": ("Register.it (Dada)", "abuse@register.it", None, False),
+    "ovh sas": ("OVH", None, "https://www.ovh.com/abuse", True),
+    "101domain": ("101Domain", "abuse@101domain.com", None, False),
+}
+
+
+# Map of "looks like brand keyword" → primary domain we should derive
+# the abuse@ fallback from when no entry above matches and WHOIS publishes
+# nothing useful. Lets us be optimistic with newer registrars without
+# needing a full registry update.
+REGISTRAR_DOMAIN_HINTS = {
+    "spaceship": "spaceship.com",
+    "namesilo": "namesilo.com",
+    "porkbun": "porkbun.com",
+    "dynadot": "dynadot.com",
+    "godaddy": "godaddy.com",
+    "namecheap": "namecheap.com",
+    "hostinger": "hostinger.com",
+    "cloudflare": "cloudflare.com",
+    "ovh": "ovh.com",
+    "ionos": "ionos.com",
+    "google": "squarespace.com",
+    "squarespace": "squarespace.com",
+    "tucows": "tucows.com",
+    "name.com": "name.com",
+    "name com": "name.com",
+    "register": "register.com",
+    "key-systems": "key-systems.net",
+    "centralnic": "centralnic.com",
+    "regru": "reg.ru",
+    "reg.ru": "reg.ru",
+    "epik": "epik.com",
+    "alibaba": "aliyun.com",
+    "internet.bs": "internet.bs",
+    "internetbs": "internet.bs",
 }
 
 
@@ -97,3 +156,32 @@ def fallback_abuse_email(domain_or_org: str) -> str:
     if len(parts) >= 2:
         return f"abuse@{'.'.join(parts[-2:])}"
     return f"abuse@{domain_or_org.lower().strip()}"
+
+
+def derive_registrar_abuse_email(registrar_field: Optional[str]) -> Optional[str]:
+    """When the registry has no entry and WHOIS/RDAP redacted the abuse
+    address, fall back to a domain hint derived from the registrar name.
+    Returns abuse@<best-guess-domain> or None when we can't make a
+    confident guess. Used to cover newer registrars (e.g. Spaceship pre-
+    registry-entry) without going completely silent on dispatch."""
+    if not registrar_field:
+        return None
+    key = registrar_field.lower()
+    for needle, dom in REGISTRAR_DOMAIN_HINTS.items():
+        if needle in key:
+            return f"abuse@{dom}"
+    # Last-resort: strip common suffixes ("Inc.", "LLC", "Ltd", "GmbH",
+    # "Corp", "Co", "S.A.", ", LLC", etc.) and take the first word as
+    # the brand, then assume <brand>.com. Conservative — only used
+    # when the registrar string has no spaces/punctuation that would
+    # produce a domain like "the-spaceship.com".
+    cleaned = (key.replace(",", " ").replace(".", " ")
+               .replace("inc", "").replace("llc", "")
+               .replace("ltd", "").replace("gmbh", "")
+               .replace("corp", "").replace("co", "")
+               .replace("s.a.", "").replace("sas", "")
+               .strip())
+    first = cleaned.split()[0] if cleaned.split() else ""
+    if first and first.isascii() and first.isalnum() and len(first) >= 4:
+        return f"abuse@{first}.com"
+    return None
