@@ -39,10 +39,15 @@ class Settings(BaseSettings):
     # Email to abuse@cloudflare.com is documented as decorative; CF
     # auto-bounces it back to the form. We keep the audit Report row
     # but the actual dispatch goes through these endpoints.
-    CF_API_EMAIL: Optional[str] = None
+    CF_API_EMAIL: Optional[str] = None  # CF dashboard login email (auth only)
     CF_API_KEY: Optional[str] = None  # Global API Key (legacy auth)
     CF_API_TOKEN: Optional[str] = None  # Modern Bearer token
     CF_ACCOUNT_ID: Optional[str] = None
+    # Email put into the abuse-report payload as the reporter contact —
+    # what CF uses if they need to reach out about the report. Defaults
+    # to EMAILS_FROM_EMAIL (takedowns@trusyn.io) so this is independent
+    # of the CF dashboard login.
+    CF_REPORTER_EMAIL: Optional[str] = None
 
     model_config = SettingsConfigDict(
         case_sensitive=True,

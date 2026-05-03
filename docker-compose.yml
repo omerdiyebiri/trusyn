@@ -40,6 +40,7 @@ services:
       CF_API_KEY: ${CF_API_KEY}
       CF_API_TOKEN: ${CF_API_TOKEN}
       CF_ACCOUNT_ID: ${CF_ACCOUNT_ID}
+      CF_REPORTER_EMAIL: ${CF_REPORTER_EMAIL}
     volumes:
       - evidence_data:/app/storage
     depends_on:
@@ -65,6 +66,7 @@ services:
       CF_API_KEY: ${CF_API_KEY}
       CF_API_TOKEN: ${CF_API_TOKEN}
       CF_ACCOUNT_ID: ${CF_ACCOUNT_ID}
+      CF_REPORTER_EMAIL: ${CF_REPORTER_EMAIL}
     volumes:
       - evidence_data:/app/storage
     depends_on:

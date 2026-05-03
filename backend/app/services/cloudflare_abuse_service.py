@@ -127,7 +127,15 @@ def submit_phishing_report(
     if len(target_urls) > 250:
         target_urls = target_urls[:250]
 
-    email = reporter_email or settings.CF_API_EMAIL or "takedowns@trusyn.io"
+    # Reporter email is independent of CF_API_EMAIL (which is the login
+    # email used for auth). Prefer CF_REPORTER_EMAIL → operational
+    # takedowns mailbox (EMAILS_FROM_EMAIL) → caller-supplied → finally
+    # CF_API_EMAIL as last resort.
+    email = (reporter_email
+             or settings.CF_REPORTER_EMAIL
+             or settings.EMAILS_FROM_EMAIL
+             or settings.CF_API_EMAIL
+             or "takedowns@trusyn.io")
     name = reporter_name or "Trusyn Brand Protection"
 
     payload: Dict[str, Any] = {
