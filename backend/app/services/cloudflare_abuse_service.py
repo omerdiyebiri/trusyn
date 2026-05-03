@@ -22,7 +22,7 @@ This service:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional  # noqa: F401
 
 import httpx
 
@@ -35,24 +35,55 @@ logger = logging.getLogger(__name__)
 CF_API_BASE = "https://api.cloudflare.com/client/v4"
 
 
-def _auth_headers() -> Optional[Dict[str, str]]:
-    """Build CF auth headers. Returns None if not configured."""
+def _auth_header_candidates() -> List[Dict[str, str]]:
+    """Return all configured auth header sets to try, in order. CF has
+    two formats live in 2026: the legacy 37-char hex Global API Key
+    (X-Auth-Email + X-Auth-Key) and the newer 'cfk_'-prefixed key format
+    that's served when you click "View Global API Key" on migrated
+    accounts. The cfk_ format is Bearer-only — sending it via legacy
+    headers returns 403 'Authentication error'. We try Bearer first
+    when we see a cfk_ prefix, and fall back to legacy-headers if the
+    operator only configured the email pair."""
+    out: List[Dict[str, str]] = []
     if settings.CF_API_TOKEN:
-        return {"Authorization": f"Bearer {settings.CF_API_TOKEN}"}
-    if settings.CF_API_KEY and settings.CF_API_EMAIL:
-        return {
-            "X-Auth-Email": settings.CF_API_EMAIL,
-            "X-Auth-Key": settings.CF_API_KEY,
-        }
-    # Heuristic: the legacy "cfk_..." prefix indicates a scoped token CF
-    # generated through the dashboard's API-key-style flow; treat as Bearer.
-    if settings.CF_API_KEY and settings.CF_API_KEY.startswith("cfk_"):
-        return {"Authorization": f"Bearer {settings.CF_API_KEY}"}
-    return None
+        out.append({"Authorization": f"Bearer {settings.CF_API_TOKEN}"})
+    if settings.CF_API_KEY:
+        if settings.CF_API_KEY.startswith("cfk_"):
+            out.append({"Authorization": f"Bearer {settings.CF_API_KEY}"})
+        if settings.CF_API_EMAIL:
+            out.append({
+                "X-Auth-Email": settings.CF_API_EMAIL,
+                "X-Auth-Key": settings.CF_API_KEY,
+            })
+    return out
+
+
+def _auth_headers() -> Optional[Dict[str, str]]:
+    """Backward-compat helper: returns the first candidate, or None."""
+    cands = _auth_header_candidates()
+    return cands[0] if cands else None
 
 
 def is_configured() -> bool:
-    return bool(settings.CF_ACCOUNT_ID and _auth_headers())
+    return bool(settings.CF_ACCOUNT_ID and _auth_header_candidates())
+
+
+def _try_request(method: str, url: str, *, json_body: Optional[dict] = None,
+                 timeout: float = 30.0) -> Any:
+    """Attempt the request with each configured auth header set; return the
+    first response that isn't 401/403. If every candidate auth-fails, the
+    final response is returned so the caller can surface the error."""
+    last_resp = None
+    for headers in _auth_header_candidates():
+        h = dict(headers)
+        if json_body is not None:
+            h["Content-Type"] = "application/json"
+        with httpx.Client(timeout=timeout) as client:
+            resp = client.request(method, url, headers=h, json=json_body)
+        last_resp = resp
+        if resp.status_code not in (401, 403):
+            return resp
+    return last_resp
 
 
 def url_scanner_scan(target_url: str, timeout: float = 30.0) -> Dict[str, Any]:
@@ -63,17 +94,15 @@ def url_scanner_scan(target_url: str, timeout: float = 30.0) -> Dict[str, Any]:
     if not is_configured():
         return {"status": "skipped", "uuid": None,
                 "error": "CF credentials not configured"}
-    headers = _auth_headers() or {}
-    headers["Content-Type"] = "application/json"
     url = (f"{CF_API_BASE}/accounts/{settings.CF_ACCOUNT_ID}"
            f"/urlscanner/v2/scan")
     try:
-        with httpx.Client(timeout=timeout) as client:
-            resp = client.post(
-                url,
-                headers=headers,
-                json={"url": target_url, "visibility": "public"},
-            )
+        resp = _try_request("POST", url,
+                            json_body={"url": target_url, "visibility": "public"},
+                            timeout=timeout)
+        if resp is None:
+            return {"status": "failed", "uuid": None,
+                    "error": "No auth candidate available"}
         if resp.status_code in (200, 201, 202):
             data = resp.json()
             return {
@@ -154,14 +183,14 @@ def submit_phishing_report(
         "logoLink": "",
     }
 
-    headers = _auth_headers() or {}
-    headers["Content-Type"] = "application/json"
     url = (f"{CF_API_BASE}/accounts/{settings.CF_ACCOUNT_ID}"
            f"/abuse-reports/abuse_phishing")
 
     try:
-        with httpx.Client(timeout=timeout) as client:
-            resp = client.post(url, headers=headers, json=payload)
+        resp = _try_request("POST", url, json_body=payload, timeout=timeout)
+        if resp is None:
+            return {"status": "failed", "report_id": None,
+                    "error": "No auth candidate available"}
         if resp.status_code in (200, 201, 202):
             data = resp.json()
             result = data.get("result") or {}
@@ -185,3 +214,44 @@ def submit_phishing_report(
     except Exception as exc:
         logger.error("CF abuse submit errored: %s", exc)
         return {"status": "failed", "report_id": None, "error": str(exc)}
+
+
+def verify_credentials() -> Dict[str, Any]:
+    """Sanity check: hit /user (Bearer) and /accounts/{id} for each
+    configured auth header set, report which pass. Used by an admin
+    diagnostic endpoint so we can tell the operator exactly which auth
+    method works for their key without firing a real abuse report."""
+    if not settings.CF_ACCOUNT_ID:
+        return {"ok": False, "error": "CF_ACCOUNT_ID not set"}
+    candidates = _auth_header_candidates()
+    if not candidates:
+        return {"ok": False, "error": "No CF_API_KEY/CF_API_TOKEN configured"}
+    results = []
+    user_url = f"{CF_API_BASE}/user"
+    accounts_url = f"{CF_API_BASE}/accounts/{settings.CF_ACCOUNT_ID}"
+    for idx, headers in enumerate(candidates):
+        method_label = ("bearer" if "Authorization" in headers else "legacy_keypair")
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                u = client.get(user_url, headers=headers)
+                a = client.get(accounts_url, headers=headers)
+            results.append({
+                "auth_method": method_label,
+                "user_status": u.status_code,
+                "account_status": a.status_code,
+                "user_ok": u.status_code == 200,
+                "account_ok": a.status_code == 200,
+                "account_error": (None if a.status_code == 200
+                                  else a.text[:300]),
+            })
+        except Exception as exc:
+            results.append({
+                "auth_method": method_label,
+                "error": str(exc),
+            })
+    any_ok = any(r.get("account_ok") for r in results)
+    return {"ok": any_ok, "candidates": results,
+            "account_id": settings.CF_ACCOUNT_ID,
+            "email_set": bool(settings.CF_API_EMAIL),
+            "key_prefix": (settings.CF_API_KEY[:5] if settings.CF_API_KEY else None),
+            "token_set": bool(settings.CF_API_TOKEN)}

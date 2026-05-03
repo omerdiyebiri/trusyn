@@ -99,6 +99,18 @@ async def create_tenant_user(
     return user
 
 
+@router.get("/cloudflare/verify")
+async def verify_cloudflare(
+    *,
+    current_user: User = Depends(deps.get_current_super_admin),
+) -> Any:
+    """Admin diagnostic — returns which configured CF auth method
+    actually works against /user and /accounts/{id}. Use to debug
+    submission failures without firing a real abuse report."""
+    from app.services.cloudflare_abuse_service import verify_credentials
+    return verify_credentials()
+
+
 @router.get("/vekalet/pending", response_model=List[BrandSchema])
 async def list_pending_vekalet(
     db: AsyncSession = Depends(get_db),
