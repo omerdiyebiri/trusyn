@@ -92,7 +92,111 @@ export default function SettingsPage() {
           live queue.
         </p>
       </Card>
+
+      {user?.role === 'super_admin' && <CloudflareDiagnostic />}
     </div>
+  );
+}
+
+interface CFCandidate {
+  auth_method: string;
+  user_status?: number;
+  account_status?: number;
+  user_ok?: boolean;
+  account_ok?: boolean;
+  account_error?: string | null;
+  error?: string;
+}
+
+interface CFVerifyResult {
+  ok: boolean;
+  candidates?: CFCandidate[];
+  account_id?: string;
+  email_set?: boolean;
+  key_prefix?: string | null;
+  token_set?: boolean;
+  error?: string;
+}
+
+function CloudflareDiagnostic() {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<CFVerifyResult | null>(null);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true);
+    setErrMsg(null);
+    try {
+      const res = await api.get('/admin/cloudflare/verify');
+      setResult(res.data);
+    } catch (caught: unknown) {
+      const e = caught as { response?: { data?: { detail?: string } } };
+      setErrMsg(e.response?.data?.detail || 'Diagnostic call failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card title="Cloudflare Auth Diagnostic">
+      <p className="text-xs text-gray-500 mb-3">
+        Verifies which configured CF auth method actually authenticates against
+        the API. Useful when abuse submissions are returning 403.
+      </p>
+      <button
+        onClick={run}
+        disabled={busy}
+        className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-md text-sm transition-colors"
+      >
+        {busy ? 'Testing…' : 'Run CF auth test'}
+      </button>
+      {errMsg && (
+        <div className="mt-3 text-xs text-red-300 bg-red-500/10 border border-red-500/30 rounded px-3 py-2">
+          {errMsg}
+        </div>
+      )}
+      {result && (
+        <div className="mt-3 space-y-3">
+          <div className={`text-xs px-3 py-2 rounded border ${result.ok ? 'bg-green-500/10 text-green-300 border-green-500/30' : 'bg-red-500/10 text-red-300 border-red-500/30'}`}>
+            <strong>Overall:</strong> {result.ok ? 'OK — at least one auth method works' : 'FAILED — no auth method works'}
+            {result.error && <span> · {result.error}</span>}
+          </div>
+          <div className="text-xs text-gray-400 space-y-0.5">
+            <div>Account ID: <span className="font-mono">{result.account_id || '—'}</span></div>
+            <div>CF_API_EMAIL set: {result.email_set ? 'yes' : 'no'}</div>
+            <div>CF_API_KEY prefix: <span className="font-mono">{result.key_prefix || '—'}</span></div>
+            <div>CF_API_TOKEN set: {result.token_set ? 'yes' : 'no'}</div>
+          </div>
+          {result.candidates && result.candidates.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-xs uppercase tracking-widest font-bold text-gray-500">Candidates tried</div>
+              {result.candidates.map((c, i) => (
+                <div key={i} className="bg-gray-950 border border-gray-700 rounded p-3 text-xs space-y-1">
+                  <div className="font-bold text-white">{c.auth_method}</div>
+                  {c.error ? (
+                    <div className="text-red-300">{c.error}</div>
+                  ) : (
+                    <>
+                      <div className="text-gray-400">
+                        /user → <span className={c.user_ok ? 'text-green-300' : 'text-red-300'}>{c.user_status}</span>
+                      </div>
+                      <div className="text-gray-400">
+                        /accounts/{'{id}'} → <span className={c.account_ok ? 'text-green-300' : 'text-red-300'}>{c.account_status}</span>
+                      </div>
+                      {c.account_error && (
+                        <div className="text-yellow-300 break-all">
+                          {c.account_error}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }
 
