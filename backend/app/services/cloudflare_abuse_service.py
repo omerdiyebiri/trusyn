@@ -36,25 +36,28 @@ CF_API_BASE = "https://api.cloudflare.com/client/v4"
 
 
 def _auth_header_candidates() -> List[Dict[str, str]]:
-    """Return all configured auth header sets to try, in order. CF has
-    two formats live in 2026: the legacy 37-char hex Global API Key
-    (X-Auth-Email + X-Auth-Key) and the newer 'cfk_'-prefixed key format
-    that's served when you click "View Global API Key" on migrated
-    accounts. The cfk_ format is Bearer-only — sending it via legacy
-    headers returns 403 'Authentication error'. We try Bearer first
-    when we see a cfk_ prefix, and fall back to legacy-headers if the
-    operator only configured the email pair."""
+    """Return all configured auth header sets to try, in order.
+    Auth-method observations from production diagnostics:
+      - `cfk_`-prefixed keys are CF's Global API Key on migrated
+        accounts. They authenticate via legacy X-Auth-Email +
+        X-Auth-Key headers (NOT Bearer — Bearer returns 9109
+        'Invalid access token').
+      - Modern scoped tokens (created via "Create Token" UI, no
+        cfk_ prefix) authenticate via Bearer.
+    We try the explicit token first, then the keypair, then a
+    speculative Bearer attempt with the key as a last resort."""
     out: List[Dict[str, str]] = []
     if settings.CF_API_TOKEN:
         out.append({"Authorization": f"Bearer {settings.CF_API_TOKEN}"})
-    if settings.CF_API_KEY:
-        if settings.CF_API_KEY.startswith("cfk_"):
-            out.append({"Authorization": f"Bearer {settings.CF_API_KEY}"})
-        if settings.CF_API_EMAIL:
-            out.append({
-                "X-Auth-Email": settings.CF_API_EMAIL,
-                "X-Auth-Key": settings.CF_API_KEY,
-            })
+    if settings.CF_API_KEY and settings.CF_API_EMAIL:
+        out.append({
+            "X-Auth-Email": settings.CF_API_EMAIL,
+            "X-Auth-Key": settings.CF_API_KEY,
+        })
+    # Speculative Bearer attempt for keys without an associated email
+    # (e.g. operator pasted a scoped token into CF_API_KEY).
+    if settings.CF_API_KEY and not settings.CF_API_EMAIL:
+        out.append({"Authorization": f"Bearer {settings.CF_API_KEY}"})
     return out
 
 
