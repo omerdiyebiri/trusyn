@@ -400,10 +400,11 @@ async def send_abuse_reports_async(incident_id: str) -> None:
                 await _persist_and_send(db, incident, rendered, r_name)
 
             if on_cloudflare:
-                # Primary path: CF Abuse Reports API. Bypasses Turnstile,
-                # feeds the same triage pipeline as the form. Email to
-                # abuse@cloudflare.com is decorative; CF documents that
-                # they auto-bounce email submissions back to the form.
+                # Primary path: CF Abuse Reports API (when our token is
+                # authorized). Falls back to abuse@cloudflare.com mail when
+                # the API path returns 401 (token lacks Trusted Reporter
+                # scope) — the mail body explicitly requests action so the
+                # T&S team can triage off it.
                 cf_api_succeeded = False
                 if cf_is_configured():
                     cf_scan = await asyncio.get_event_loop().run_in_executor(
@@ -431,9 +432,9 @@ async def send_abuse_reports_async(incident_id: str) -> None:
                     cf_api_succeeded = cf_result.get("status") == "submitted"
 
                 # Email backstop: send when API call wasn't attempted (no
-                # creds) OR when it failed (so we don't leave CF empty-
-                # handed while the API access issue is being resolved).
-                # CF treats this as decorative but it's better than nothing.
+                # creds) OR when it failed. Body explicitly asks T&S to
+                # display the interstitial, forward to host, and notify
+                # registrant — i.e. action request, not audit notice.
                 if not cf_api_succeeded:
                     rendered = abuse_service.render_cloudflare(
                         incident, brand, origin_ip)
